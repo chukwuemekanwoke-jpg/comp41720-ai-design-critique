@@ -147,6 +147,11 @@ one that makes RAG, versioning and failure handling matter most.
 
 ---
 
+## Architecture
+
+The draft service split, with a candidate ADR for each service and the open
+decisions, is in [docs/architecture.md](docs/architecture.md).
+
 ## Status
 
 Topic selected on 17 October 2026. The next steps are the source-validation
