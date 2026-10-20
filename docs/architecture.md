@@ -17,6 +17,9 @@ assigned and the fifth service is a proposal for the group to confirm.
 
 - A message queue between the collector and the indexer, run locally via
   Docker Compose.
+- A transactional outbox in the source collector's local store, so a crash between
+  saving a snapshot and publishing its update event cannot lose the update
+  (ADR-0001).
 - A one-command startup script, with a Compose file wiring everything together.
 - Synthetic or snapshotted data, so the demo works offline.
 

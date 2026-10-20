@@ -31,7 +31,7 @@ answer service passes the id through to the response.
 
 This accepts **eventual consistency** between the source and the index: for a
 short time after a page changes, answers cite the previous version, and the
-response shows that version and its last-checked date so users can see it.
+response shows that version and its `last_success_at` date so users can see it.
 Within one request the view is always consistent.
 
 ## Consequences

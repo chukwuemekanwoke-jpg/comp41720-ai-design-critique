@@ -29,7 +29,7 @@ same interface. A circuit breaker stops calling the primary for a cool-down
 period after repeated failures. Generation length is capped per request.
 
 The fallback must still ground the answer. It returns the best-matching passages
-with their source links and the version and last-checked date, labelled as a
+with their source links and the version and `last_success_at` date, labelled as a
 reduced answer (retrieved evidence without generated explanation). If there is
 no sufficient evidence, the service says so and does not guess.
 

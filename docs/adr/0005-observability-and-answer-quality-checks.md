@@ -23,7 +23,9 @@ the system is healthy and checks that show its answers are supported.
 ## Decision (proposed)
 
 Each service exposes a metrics endpoint (request rate, error rate, latency,
-queue depth, retries, and for the answer service token usage and estimated
+queue depth, retries, outbox backlog and oldest pending event age, and source
+staleness (time since `last_success_at`) for the collector, and for the answer
+service token usage and estimated
 cost). The gateway adds a request id that is propagated across services so one
 question can be traced end to end.
 
