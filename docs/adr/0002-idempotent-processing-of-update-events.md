@@ -11,7 +11,9 @@ The collector publishes a document-update event to a queue and the indexing
 worker consumes it. Most queues give at-least-once delivery, so the worker will
 see duplicates, retries after a crash, and events that arrive out of order. The
 brief requires us to inject duplicate events and show recovery, retry limits
-and idempotent processing.
+and idempotent processing. The collector sends events through a transactional
+outbox (ADR-0001), so every detected change is delivered at least once, even
+after a collector crash. This ADR covers what the worker does with the repeats.
 
 ## Options considered
 
@@ -39,6 +41,8 @@ event moves to a dead-letter queue with the error attached.
 
 - Duplicate and replayed events are safe, which the failure demo can show
   directly by publishing the same event twice.
+- Outbox resends from the collector are safe for the same reason, so the
+  collector can retry freely after a crash.
 - The worker needs a small durable store for processed-event state.
 - The retry limit and backoff must be configured and exposed as metrics.
 - A poison message cannot block the queue; it ends up in the dead-letter queue

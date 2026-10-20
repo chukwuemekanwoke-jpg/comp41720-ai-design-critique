@@ -4,14 +4,16 @@
 - **Service:** Source collector
 - **Owner:** Sunmin Lee
 - **Date:** 2026-10-17
+- **Revised:** 2026-10-20 (timestamps and outbox added after team review)
 
 ## Context
 
 StudentPath answers from 15-25 official ISD pages that change over time. Every
 answer must show the collection version it used and the date the sources were
-last checked. The collector must therefore decide when a page has changed,
-keep earlier versions, and publish an update event without flooding the
-indexer when nothing meaningful changed.
+last successfully fetched. The collector must therefore decide when a page has
+changed, keep earlier versions, publish an update event without flooding the
+indexer when nothing meaningful changed, and never lose an update that it has
+detected.
 
 ## Options considered
 
@@ -28,20 +30,43 @@ Use scheduled polling with a content hash of the cleaned main text (navigation,
 scripts and banners stripped). Keep both the raw fetch and the cleaned text per
 snapshot. Offer a manual "check now" trigger so the demo does not wait for the
 timer. Each snapshot gets an immutable id (`source_id` plus `sha256` of the
-cleaned text) and a `last_checked_at` timestamp, which is updated even when the
-content is unchanged.
+cleaned text).
+
+Each source records two timestamps:
+
+- `last_attempt_at` is updated on every poll, including failed polls. It shows
+  that the collector is still trying.
+- `last_success_at` is updated only when a fetch succeeds, whether or not the
+  content changed. It is the date users see.
+
+When the official site is unavailable, `last_attempt_at` moves and
+`last_success_at` stays put, so users can see how old the information is. Once
+`last_success_at` passes a staleness threshold, answers show a visible notice
+that the source has not been checked recently.
+
+Update events are published through a transactional outbox. The new snapshot
+and an outbox row are written in one database transaction. A relay publishes
+pending rows and marks each one sent only after the broker confirms. After a
+crash, the relay resends anything still pending. Change detection compares each
+poll with the last stored snapshot, so without the outbox a crash between saving
+and publishing would never be detected again. The outbox closes that gap.
 
 ## Consequences
 
-- An unchanged page produces no update event, so no needless re-indexing.
-- `last_checked_at` and the snapshot id can be shown to users with every answer.
-- Cosmetic markup changes are ignored, but a text-only edit to a cleaning
-  rule changes hashes for every page, so cleaning rules must be versioned.
+- An unchanged page updates `last_success_at` and produces no update event, so
+  there is no needless re-indexing.
+- Users can see how current the information is, including during an outage.
+- Cosmetic markup changes are ignored, but a text-only edit to a cleaning rule
+  changes hashes for every page, so cleaning rules must be versioned.
 - Old snapshots are kept, which supports reproducing an earlier answer at the
   cost of storage; a retention limit is needed.
+- The outbox adds a small durable table to the collector and makes publishing
+  at-least-once. This is safe because the indexing worker is idempotent
+  (ADR-0002).
 - For the offline demo, snapshots can be replayed from local files.
 
 ## Open questions
 
 - Polling interval for the demo versus a realistic interval.
-- How a fetch failure is recorded without advancing `last_checked_at`.
+- The staleness threshold before users see a notice.
+- How long the relay retries while the broker is down, and whether a long backlog raises an alert.
