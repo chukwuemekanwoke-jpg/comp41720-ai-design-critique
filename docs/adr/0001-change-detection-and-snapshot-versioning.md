@@ -2,7 +2,7 @@
 
 - **Status:** Draft (proposed)
 - **Service:** Source collector
-- **Owner:** TBD
+- **Owner:** Sunmin Lee
 - **Date:** 2026-10-17
 
 ## Context

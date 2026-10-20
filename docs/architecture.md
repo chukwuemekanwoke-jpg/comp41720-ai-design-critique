@@ -7,11 +7,11 @@ assigned and the fifth service is a proposal for the group to confirm.
 
 | # | Service | Owner | Candidate ADR (one page) |
 | --- | --- | --- | --- |
-| 1 | **Source collector**: fetches the 15-25 official ISD pages, snapshots them with a version and last-checked date, and detects changes | TBD | **Change detection and snapshot versioning.** Polling versus on-demand fetch, what counts as "changed", and how the last-checked date is stored |
-| 2 | **Indexing worker**: takes document updates from a queue, splits them into passages, and builds a versioned searchable index | TBD | **Idempotent processing of update events.** Handling duplicate and out-of-order events, retry limits, and a dead-letter path |
-| 3 | **Retrieval API**: finds the relevant passages for a question from a known index version | TBD | **Consistency during re-index.** Whether users see the old or the new index mid-update, and how each answer pins an index version |
-| 4 | **Answer service**: passes passages to a local or simulated model and returns the explanation, checklist, source links and last-check date | TBD | **Model timeout and local fallback.** Timeout and retry policy, the simulated-model fallback, and a generation cap |
-| 5 | **Gateway and evaluation** (placeholder): single entry point, metrics export, and the evaluation harness | TBD | **Observability and answer-quality checks.** Rate, error, latency and cost metrics, plus the 30-40 question evaluation set with injection tests |
+| 1 | **Source collector**: fetches the 15-25 official ISD pages, snapshots them with a version and last-checked date, and detects changes | Sunmin Lee | **Change detection and snapshot versioning.** Polling versus on-demand fetch, what counts as "changed", and how the last-checked date is stored |
+| 2 | **Indexing worker**: takes document updates from a queue, splits them into passages, and builds a versioned searchable index | Kezhen Zhang | **Idempotent processing of update events.** Handling duplicate and out-of-order events, retry limits, and a dead-letter path |
+| 3 | **Retrieval API**: finds the relevant passages for a question from a known index version | Chukwuemeka Nwoke | **Consistency during re-index.** Whether users see the old or the new index mid-update, and how each answer pins an index version |
+| 4 | **Answer service**: passes passages to a local or simulated model and returns the explanation, checklist, source links and last-check date | Jordan Hennessy | **Model timeout and local fallback.** Timeout and retry policy, the simulated-model fallback, and a generation cap |
+| 5 | **Gateway and evaluation** (placeholder): single entry point, metrics export, and the evaluation harness | Chukwuemeka Nwoke (with contributions from all members) | **Observability and answer-quality checks.** Rate, error, latency and cost metrics, plus the 30-40 question evaluation set with injection tests |
 
 ## Supporting pieces (not services)
 
@@ -42,4 +42,4 @@ Question path
   member, and the report needs five ADRs. Confirm how the fifth is allocated.
 - **Queue technology.** Pick one that runs locally with one command, such as
   Redis or RabbitMQ in Docker Compose.
-- **Owners.** Assign each service and its ADR to a team member.
+- **Owners.** Assigned: source collector and ADR-0001 to Sunmin Lee; indexing worker and ADR-0002 to Kezhen Zhang; retrieval API and ADR-0003 to Chukwuemeka Nwoke; answer service and ADR-0004 to Jordan Hennessy; gateway and evaluation and ADR-0005 to Chukwuemeka Nwoke, with contributions from all members.

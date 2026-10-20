@@ -2,7 +2,7 @@
 
 - **Status:** Draft (proposed)
 - **Service:** Gateway and evaluation (placeholder, to be confirmed)
-- **Owner:** TBD
+- **Owner:** Chukwuemeka Nwoke (with contributions from Kezhen Zhang, Jordan Hennessy and Sunmin Lee)
 - **Date:** 2026-10-17
 
 ## Context

@@ -2,7 +2,7 @@
 
 - **Status:** Draft (proposed)
 - **Service:** Indexing worker
-- **Owner:** TBD
+- **Owner:** Kezhen Zhang
 - **Date:** 2026-10-17
 
 ## Context

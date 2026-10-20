@@ -2,7 +2,7 @@
 
 - **Status:** Draft (proposed)
 - **Service:** Answer service
-- **Owner:** TBD
+- **Owner:** Jordan Hennessy
 - **Date:** 2026-10-17
 
 ## Context

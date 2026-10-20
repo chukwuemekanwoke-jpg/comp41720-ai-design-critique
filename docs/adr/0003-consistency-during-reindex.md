@@ -2,7 +2,7 @@
 
 - **Status:** Draft (proposed)
 - **Service:** Retrieval API
-- **Owner:** TBD
+- **Owner:** Chukwuemeka Nwoke
 - **Date:** 2026-10-17
 
 ## Context
