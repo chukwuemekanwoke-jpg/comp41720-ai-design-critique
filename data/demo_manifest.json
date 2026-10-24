@@ -1,0 +1,10 @@
+{
+  "project": "StudentPath",
+  "stage": "synthetic_offline_demo",
+  "sources": [
+    {
+      "source_id": "S001",
+      "canonical_url": "https://www.irishimmigration.ie/my-situation-has-changed-since-i-arrived-in-ireland/third-level-graduate-programme/"
+    }
+  ]
+}
