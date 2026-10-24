@@ -704,3 +704,105 @@ def test_index_manifest_requires_saved_passages(
                 event,
                 passages,
             )
+
+
+def test_activation_switches_current_index_atomically(
+    tmp_path,
+) -> None:
+    clean_text = "official information version A"
+    event = make_event(
+        clean_text=clean_text,
+        source_version=1,
+    )
+    chunker = DeterministicChunker()
+    passages = chunker.chunk(
+        snapshot_id=event.snapshot_id,
+        clean_text=clean_text,
+    )
+
+    with IndexerStore(
+        tmp_path / "indexer.sqlite3"
+    ) as store:
+        assert store.start_attempt(event) is True
+        store.save_passages(passages)
+
+        index_version = store.create_index_version(
+            event,
+            passages,
+        )
+
+        assert store.get_index_status(
+            index_version
+        ) == "ready"
+        assert store.get_current_index_version() is None
+
+        assert store.activate(
+            event,
+            index_version,
+        ) is True
+
+        assert store.get_index_status(
+            index_version
+        ) == "active"
+        assert (
+            store.get_current_index_version()
+            == index_version
+        )
+
+        stored_event = store.get_event(event.event_id)
+        assert stored_event is not None
+        assert stored_event.status == "completed"
+
+
+def test_new_index_supersedes_previous_index(
+    tmp_path,
+) -> None:
+    chunker = DeterministicChunker()
+
+    event_a = make_event(
+        clean_text="official information version A",
+        source_version=1,
+    )
+    event_b = make_event(
+        clean_text="official information version B",
+        source_version=2,
+    )
+
+    with IndexerStore(
+        tmp_path / "indexer.sqlite3"
+    ) as store:
+        assert store.start_attempt(event_a) is True
+
+        passages_a = chunker.chunk(
+            snapshot_id=event_a.snapshot_id,
+            clean_text="official information version A",
+        )
+        store.save_passages(passages_a)
+
+        index_a = store.create_index_version(
+            event_a,
+            passages_a,
+        )
+        assert store.activate(event_a, index_a) is True
+
+        assert store.start_attempt(event_b) is True
+
+        passages_b = chunker.chunk(
+            snapshot_id=event_b.snapshot_id,
+            clean_text="official information version B",
+        )
+        store.save_passages(passages_b)
+
+        index_b = store.create_index_version(
+            event_b,
+            passages_b,
+        )
+        assert store.activate(event_b, index_b) is True
+
+        assert store.get_index_status(
+            index_a
+        ) == "superseded"
+        assert store.get_index_status(
+            index_b
+        ) == "active"
+        assert store.get_current_index_version() == index_b

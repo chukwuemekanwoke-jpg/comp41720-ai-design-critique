@@ -285,52 +285,154 @@ class IndexerStore:
         index_version: int,
     ) -> bool:
         """
-        Activate an event when it is newer than the current source version.
+        Atomically activate a completed index candidate.
 
-        Returns True if it became active, or False if it was obsolete.
+        The source state, index status, current pointer and event status
+        are changed in one SQLite transaction.
         """
 
         with self.transaction():
-            current = self.connection.execute(
+            current_source = self.connection.execute(
                 """
-                SELECT source_version
-                FROM source_state
-                WHERE source_id = ?
-                """,
+                    SELECT source_version
+                    FROM source_state
+                    WHERE source_id = ?
+                    """,
                 (event.source_id,),
             ).fetchone()
 
             if (
-                current is not None
-                and current["source_version"] >= event.source_version
+                current_source is not None
+                and current_source["source_version"]
+                >= event.source_version
             ):
                 self.connection.execute(
                     """
-                    UPDATE processed_events
-                    SET
-                        status = 'obsolete',
-                        updated_at = CURRENT_TIMESTAMP
-                    WHERE event_id = ?
-                    """,
+                        UPDATE processed_events
+                        SET
+                            status = 'obsolete',
+                            updated_at = CURRENT_TIMESTAMP
+                        WHERE event_id = ?
+                        """,
                     (event.event_id,),
                 )
+
+                self.connection.execute(
+                    """
+                        UPDATE index_versions
+                        SET status = 'discarded'
+                        WHERE
+                            index_version = ?
+                            AND status IN ('building', 'ready')
+                        """,
+                    (index_version,),
+                )
+
                 return False
+
+            candidate = self.connection.execute(
+                """
+                    SELECT status
+                    FROM index_versions
+                    WHERE index_version = ?
+                    """,
+                (index_version,),
+            ).fetchone()
+
+            if candidate is not None:
+                if candidate["status"] != "ready":
+                    raise ValueError(
+                        "only a ready index version can be activated"
+                    )
+
+                indexed_source = self.connection.execute(
+                    """
+                        SELECT source_version, snapshot_id
+                        FROM index_sources
+                        WHERE
+                            index_version = ?
+                            AND source_id = ?
+                        """,
+                    (
+                        index_version,
+                        event.source_id,
+                    ),
+                ).fetchone()
+
+                if indexed_source is None:
+                    raise ValueError(
+                        "index version does not contain the event source"
+                    )
+
+                if (
+                    indexed_source["source_version"]
+                    != event.source_version
+                    or indexed_source["snapshot_id"]
+                    != event.snapshot_id
+                ):
+                    raise ValueError(
+                        "index source does not match the event"
+                    )
+
+                previous = self.connection.execute(
+                    """
+                        SELECT index_version
+                        FROM current_index
+                        WHERE singleton = 1
+                        """
+                ).fetchone()
+
+                if previous is not None:
+                    self.connection.execute(
+                        """
+                            UPDATE index_versions
+                            SET status = 'superseded'
+                            WHERE
+                                index_version = ?
+                                AND status = 'active'
+                            """,
+                        (previous["index_version"],),
+                    )
+
+                self.connection.execute(
+                    """
+                        UPDATE index_versions
+                        SET
+                            status = 'active',
+                            activated_at = CURRENT_TIMESTAMP
+                        WHERE index_version = ?
+                        """,
+                    (index_version,),
+                )
+
+                self.connection.execute(
+                    """
+                        INSERT INTO current_index (
+                            singleton,
+                            index_version
+                        )
+                        VALUES (1, ?)
+                        ON CONFLICT(singleton) DO UPDATE SET
+                            index_version = excluded.index_version
+                        """,
+                    (index_version,),
+                )
 
             self.connection.execute(
                 """
-                INSERT INTO source_state (
-                    source_id,
-                    source_version,
-                    snapshot_id,
-                    index_version
-                )
-                VALUES (?, ?, ?, ?)
-                ON CONFLICT(source_id) DO UPDATE SET
-                    source_version = excluded.source_version,
-                    snapshot_id = excluded.snapshot_id,
-                    index_version = excluded.index_version,
-                    updated_at = CURRENT_TIMESTAMP
-                """,
+                    INSERT INTO source_state (
+                        source_id,
+                        source_version,
+                        snapshot_id,
+                        index_version
+                    )
+                    VALUES (?, ?, ?, ?)
+                    ON CONFLICT(source_id) DO UPDATE SET
+                        source_version = excluded.source_version,
+                        snapshot_id = excluded.snapshot_id,
+                        index_version = excluded.index_version,
+                        updated_at = CURRENT_TIMESTAMP
+                    """,
                 (
                     event.source_id,
                     event.source_version,
@@ -341,13 +443,13 @@ class IndexerStore:
 
             cursor = self.connection.execute(
                 """
-                UPDATE processed_events
-                SET
-                    status = 'completed',
-                    last_error = NULL,
-                    updated_at = CURRENT_TIMESTAMP
-                WHERE event_id = ?
-                """,
+                    UPDATE processed_events
+                    SET
+                        status = 'completed',
+                        last_error = NULL,
+                        updated_at = CURRENT_TIMESTAMP
+                    WHERE event_id = ?
+                    """,
                 (event.event_id,),
             )
 
