@@ -7,6 +7,7 @@ import sqlite3
 from typing import Iterator
 
 from indexing_worker.models import DocumentUpdateEvent
+from indexing_worker.chunking import Passage
 
 
 @dataclass(frozen=True, slots=True)
@@ -65,6 +66,28 @@ class IndexerStore:
                 snapshot_id TEXT NOT NULL,
                 index_version INTEGER NOT NULL,
                 updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
+
+            CREATE TABLE IF NOT EXISTS passages (
+                passage_id TEXT PRIMARY KEY,
+                snapshot_id TEXT NOT NULL,
+                chunk_index INTEGER NOT NULL,
+                text TEXT NOT NULL,
+                content_sha256 TEXT NOT NULL,
+                chunker_version TEXT NOT NULL,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE (
+                    snapshot_id,
+                    chunker_version,
+                    chunk_index
+                )
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_passages_snapshot
+            ON passages (
+                snapshot_id,
+                chunker_version,
+                chunk_index
             );
             """
         )
@@ -277,6 +300,121 @@ class IndexerStore:
                 )
 
         return True
+
+    def save_passages(
+        self,
+        passages: list[Passage],
+    ) -> None:
+        """
+        Persist passages without duplicating previously indexed content.
+
+        Reprocessing the same snapshot and chunker version is safe.
+        """
+
+        with self.transaction():
+            for passage in passages:
+                self.connection.execute(
+                    """
+                    INSERT OR IGNORE INTO passages (
+                        passage_id,
+                        snapshot_id,
+                        chunk_index,
+                        text,
+                        content_sha256,
+                        chunker_version
+                    )
+                    VALUES (?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        passage.passage_id,
+                        passage.snapshot_id,
+                        passage.chunk_index,
+                        passage.text,
+                        passage.content_sha256,
+                        passage.chunker_version,
+                    ),
+                )
+
+                stored = self.connection.execute(
+                    """
+                    SELECT
+                        snapshot_id,
+                        chunk_index,
+                        text,
+                        content_sha256,
+                        chunker_version
+                    FROM passages
+                    WHERE passage_id = ?
+                    """,
+                    (passage.passage_id,),
+                ).fetchone()
+
+                if stored is None:
+                    raise RuntimeError(
+                        "passage was not stored"
+                    )
+
+                expected = (
+                    passage.snapshot_id,
+                    passage.chunk_index,
+                    passage.text,
+                    passage.content_sha256,
+                    passage.chunker_version,
+                )
+                actual = (
+                    stored["snapshot_id"],
+                    stored["chunk_index"],
+                    stored["text"],
+                    stored["content_sha256"],
+                    stored["chunker_version"],
+                )
+
+                if actual != expected:
+                    raise ValueError(
+                        "passage_id collision with different content"
+                    )
+
+    def get_passages(
+        self,
+        snapshot_id: str,
+        chunker_version: str,
+    ) -> list[Passage]:
+        rows = self.connection.execute(
+            """
+            SELECT
+                passage_id,
+                snapshot_id,
+                chunk_index,
+                text,
+                content_sha256,
+                chunker_version
+            FROM passages
+            WHERE
+                snapshot_id = ?
+                AND chunker_version = ?
+            ORDER BY chunk_index
+            """,
+            (snapshot_id, chunker_version),
+        ).fetchall()
+
+        return [
+            Passage(
+                passage_id=row["passage_id"],
+                snapshot_id=row["snapshot_id"],
+                chunk_index=row["chunk_index"],
+                text=row["text"],
+                content_sha256=row["content_sha256"],
+                chunker_version=row["chunker_version"],
+            )
+            for row in rows
+        ]
+
+    def count_passages(self) -> int:
+        row = self.connection.execute(
+            "SELECT COUNT(*) AS passage_count FROM passages"
+        ).fetchone()
+
+        return int(row["passage_count"])
 
     def close(self) -> None:
         self.connection.close()
