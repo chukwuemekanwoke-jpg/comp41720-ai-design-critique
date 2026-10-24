@@ -89,6 +89,63 @@ class IndexerStore:
                 chunker_version,
                 chunk_index
             );
+            CREATE TABLE IF NOT EXISTS index_versions (
+                index_version INTEGER PRIMARY KEY AUTOINCREMENT,
+                status TEXT NOT NULL CHECK (
+                    status IN (
+                        'building',
+                        'ready',
+                        'active',
+                        'superseded',
+                        'discarded'
+                    )
+                ),
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                activated_at TEXT
+            );
+
+            CREATE TABLE IF NOT EXISTS index_sources (
+                index_version INTEGER NOT NULL,
+                source_id TEXT NOT NULL,
+                source_version INTEGER NOT NULL,
+                snapshot_id TEXT NOT NULL,
+                PRIMARY KEY (
+                    index_version,
+                    source_id
+                ),
+                FOREIGN KEY (index_version)
+                    REFERENCES index_versions(index_version)
+                    ON DELETE CASCADE
+            );
+
+            CREATE TABLE IF NOT EXISTS index_passages (
+                index_version INTEGER NOT NULL,
+                source_id TEXT NOT NULL,
+                passage_id TEXT NOT NULL,
+                position INTEGER NOT NULL,
+                PRIMARY KEY (
+                    index_version,
+                    source_id,
+                    position
+                ),
+                UNIQUE (
+                    index_version,
+                    source_id,
+                    passage_id
+                ),
+                FOREIGN KEY (index_version)
+                    REFERENCES index_versions(index_version)
+                    ON DELETE CASCADE,
+                FOREIGN KEY (passage_id)
+                    REFERENCES passages(passage_id)
+            );
+
+            CREATE TABLE IF NOT EXISTS current_index (
+                singleton INTEGER PRIMARY KEY CHECK (singleton = 1),
+                index_version INTEGER NOT NULL,
+                FOREIGN KEY (index_version)
+                    REFERENCES index_versions(index_version)
+            );
             """
         )
 
@@ -415,6 +472,275 @@ class IndexerStore:
         ).fetchone()
 
         return int(row["passage_count"])
+
+    def create_index_version(
+        self,
+        event: DocumentUpdateEvent,
+        passages: list[Passage],
+    ) -> int:
+        """
+        Build an immutable candidate index manifest.
+
+        Creating the candidate does not make it current. Activation is a
+        separate atomic operation performed only after the build succeeds.
+        """
+
+        if not passages:
+            raise ValueError(
+                "an index version must contain at least one passage"
+            )
+
+        if any(
+            passage.snapshot_id != event.snapshot_id
+            for passage in passages
+        ):
+            raise ValueError(
+                "all passages must belong to the event snapshot"
+            )
+
+        passage_ids = [
+            passage.passage_id
+            for passage in passages
+        ]
+
+        if len(passage_ids) != len(set(passage_ids)):
+            raise ValueError(
+                "an index version cannot contain duplicate passages"
+            )
+
+        with self.transaction():
+            # All passages must already exist in the passage repository.
+            for passage in passages:
+                stored = self.connection.execute(
+                    """
+                    SELECT snapshot_id
+                    FROM passages
+                    WHERE passage_id = ?
+                    """,
+                    (passage.passage_id,),
+                ).fetchone()
+
+                if stored is None:
+                    raise ValueError(
+                        "passage must be saved before creating "
+                        "an index version"
+                    )
+
+                if stored["snapshot_id"] != event.snapshot_id:
+                    raise ValueError(
+                        "stored passage belongs to a different snapshot"
+                    )
+
+            cursor = self.connection.execute(
+                """
+                INSERT INTO index_versions (status)
+                VALUES ('building')
+                """
+            )
+
+            last_row_id = cursor.lastrowid
+
+            if last_row_id is None:
+                raise RuntimeError(
+                    "SQLite did not return an index version"
+                )
+
+            index_version = int(last_row_id)
+
+            current = self.connection.execute(
+                """
+                SELECT index_version
+                FROM current_index
+                WHERE singleton = 1
+                """
+            ).fetchone()
+
+            if current is not None:
+                current_version = current["index_version"]
+
+                # Copy unchanged source mappings from the current index.
+                self.connection.execute(
+                    """
+                    INSERT INTO index_sources (
+                        index_version,
+                        source_id,
+                        source_version,
+                        snapshot_id
+                    )
+                    SELECT
+                        ?,
+                        source_id,
+                        source_version,
+                        snapshot_id
+                    FROM index_sources
+                    WHERE
+                        index_version = ?
+                        AND source_id != ?
+                    """,
+                    (
+                        index_version,
+                        current_version,
+                        event.source_id,
+                    ),
+                )
+
+                # Copy unchanged passage mappings.
+                self.connection.execute(
+                    """
+                    INSERT INTO index_passages (
+                        index_version,
+                        source_id,
+                        passage_id,
+                        position
+                    )
+                    SELECT
+                        ?,
+                        source_id,
+                        passage_id,
+                        position
+                    FROM index_passages
+                    WHERE
+                        index_version = ?
+                        AND source_id != ?
+                    """,
+                    (
+                        index_version,
+                        current_version,
+                        event.source_id,
+                    ),
+                )
+
+            self.connection.execute(
+                """
+                INSERT INTO index_sources (
+                    index_version,
+                    source_id,
+                    source_version,
+                    snapshot_id
+                )
+                VALUES (?, ?, ?, ?)
+                """,
+                (
+                    index_version,
+                    event.source_id,
+                    event.source_version,
+                    event.snapshot_id,
+                ),
+            )
+
+            for position, passage in enumerate(passages):
+                self.connection.execute(
+                    """
+                    INSERT INTO index_passages (
+                        index_version,
+                        source_id,
+                        passage_id,
+                        position
+                    )
+                    VALUES (?, ?, ?, ?)
+                    """,
+                    (
+                        index_version,
+                        event.source_id,
+                        passage.passage_id,
+                        position,
+                    ),
+                )
+
+            self.connection.execute(
+                """
+                UPDATE index_versions
+                SET status = 'ready'
+                WHERE index_version = ?
+                """,
+                (index_version,),
+            )
+
+        return index_version
+
+    def get_index_status(
+        self,
+        index_version: int,
+    ) -> str | None:
+        row = self.connection.execute(
+            """
+            SELECT status
+            FROM index_versions
+            WHERE index_version = ?
+            """,
+            (index_version,),
+        ).fetchone()
+
+        if row is None:
+            return None
+
+        return str(row["status"])
+
+    def get_current_index_version(self) -> int | None:
+        row = self.connection.execute(
+            """
+            SELECT index_version
+            FROM current_index
+            WHERE singleton = 1
+            """
+        ).fetchone()
+
+        if row is None:
+            return None
+
+        return int(row["index_version"])
+
+    def get_index_source(
+        self,
+        index_version: int,
+        source_id: str,
+    ) -> ActiveSource | None:
+        row = self.connection.execute(
+            """
+            SELECT
+                index_version,
+                source_id,
+                source_version,
+                snapshot_id
+            FROM index_sources
+            WHERE
+                index_version = ?
+                AND source_id = ?
+            """,
+            (index_version, source_id),
+        ).fetchone()
+
+        if row is None:
+            return None
+
+        return ActiveSource(
+            source_id=row["source_id"],
+            source_version=row["source_version"],
+            snapshot_id=row["snapshot_id"],
+            index_version=row["index_version"],
+        )
+
+    def get_index_passage_ids(
+        self,
+        index_version: int,
+        source_id: str,
+    ) -> list[str]:
+        rows = self.connection.execute(
+            """
+            SELECT passage_id
+            FROM index_passages
+            WHERE
+                index_version = ?
+                AND source_id = ?
+            ORDER BY position
+            """,
+            (index_version, source_id),
+        ).fetchall()
+
+        return [
+            str(row["passage_id"])
+            for row in rows
+        ]
 
     def close(self) -> None:
         self.connection.close()
