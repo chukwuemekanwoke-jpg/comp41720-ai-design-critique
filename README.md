@@ -149,6 +149,9 @@ one that makes RAG, versioning and failure handling matter most.
 
 ## Architecture
 
+The Source Collector implementation, RabbitMQ demo and relay delivery contract
+are documented in [SOURCE_COLLECTOR.md](SOURCE_COLLECTOR.md).
+
 The draft service split, with a candidate ADR for each service and the open
 decisions, is in [docs/architecture.md](docs/architecture.md).
 

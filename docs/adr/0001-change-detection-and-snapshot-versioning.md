@@ -65,7 +65,22 @@ and publishing would never be detected again. The outbox closes that gap.
   (ADR-0002).
 - For the offline demo, snapshots can be replayed from local files.
 
-## Open questions
+## Implementation note (2026-10-24)
+
+The collector and separate SQLite outbox relay are implemented in
+`source_collector/`. RabbitMQ is the provisional broker, consistent with the
+draft architecture; the team still needs to agree its queue contract. The relay
+uses a durable queue, persistent mandatory messages and publisher confirms.
+It marks published only after confirmation. An event-level SQLite write
+reservation serializes competing relays, at the cost of blocking collector
+writes during bounded broker operations. Crashes release the lock and roll back
+the mark, so retries can duplicate confirmed events. No exactly-once guarantee
+is made. Failed publications remain pending and continuous mode retries after a
+configurable fixed delay. See `SOURCE_COLLECTOR.md` for configuration, tests and
+the snapshot-reversion coordination issue with ADR-0002. Snapshot retrieval and
+scheduled collection are not implemented yet.
+
+## Remaining open questions
 
 - Polling interval for the demo versus a realistic interval.
 - The staleness threshold before users see a notice.
