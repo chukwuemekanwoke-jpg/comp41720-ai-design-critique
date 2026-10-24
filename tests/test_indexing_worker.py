@@ -10,6 +10,11 @@ from indexing_worker.models import (
 )
 from indexing_worker.store import IndexerStore
 
+from indexing_worker.worker import (
+    IndexingWorker,
+    ProcessingAction,
+)
+
 
 def make_event_payload(
     clean_text: str = "Official information about Stamp 1G.",
@@ -242,3 +247,219 @@ def test_content_reversion_activates_new_logical_version(
         assert active.source_version == 3
         assert active.snapshot_id == version_1_a.snapshot_id
         assert active.index_version == 3
+
+
+class FakeSnapshotClient:
+    def __init__(
+        self,
+        snapshot: SnapshotResponse,
+    ) -> None:
+        self.snapshot = snapshot
+        self.call_count = 0
+
+    def fetch_snapshot(
+        self,
+        snapshot_id: str,
+    ) -> SnapshotResponse:
+        self.call_count += 1
+        return self.snapshot
+
+
+class FakeIndexBuilder:
+    def __init__(
+        self,
+        index_version: int,
+    ) -> None:
+        self.index_version = index_version
+        self.call_count = 0
+
+    def build_index(
+        self,
+        event: DocumentUpdateEvent,
+        snapshot: SnapshotResponse,
+    ) -> int:
+        self.call_count += 1
+        return self.index_version
+
+
+def make_snapshot(
+    event: DocumentUpdateEvent,
+    clean_text: str,
+) -> SnapshotResponse:
+    return SnapshotResponse.from_dict(
+        {
+            "snapshot_id": event.snapshot_id,
+            "source_id": event.source_id,
+            "content_sha256": event.content_sha256,
+            "cleaner_version": event.cleaner_version,
+            "clean_text": clean_text,
+        }
+    )
+
+
+def test_worker_completes_and_activates_event(
+    tmp_path,
+) -> None:
+    clean_text = "Content A"
+    event = make_event(
+        clean_text=clean_text,
+        source_version=1,
+    )
+
+    snapshot_client = FakeSnapshotClient(
+        make_snapshot(event, clean_text)
+    )
+    index_builder = FakeIndexBuilder(index_version=1)
+
+    with IndexerStore(
+        tmp_path / "indexer.sqlite3"
+    ) as store:
+        worker = IndexingWorker(
+            store=store,
+            snapshot_client=snapshot_client,
+            index_builder=index_builder,
+        )
+
+        result = worker.process(event)
+
+        assert result.action == ProcessingAction.ACK_COMPLETED
+        assert result.index_version == 1
+
+        active = store.get_active_source("S001")
+        assert active is not None
+        assert active.source_version == 1
+        assert active.snapshot_id == event.snapshot_id
+
+        stored_event = store.get_event(event.event_id)
+        assert stored_event is not None
+        assert stored_event.status == "completed"
+
+
+def test_worker_skips_completed_duplicate(
+    tmp_path,
+) -> None:
+    clean_text = "Content A"
+    event = make_event(
+        clean_text=clean_text,
+        source_version=1,
+    )
+
+    snapshot_client = FakeSnapshotClient(
+        make_snapshot(event, clean_text)
+    )
+    index_builder = FakeIndexBuilder(index_version=1)
+
+    with IndexerStore(
+        tmp_path / "indexer.sqlite3"
+    ) as store:
+        worker = IndexingWorker(
+            store=store,
+            snapshot_client=snapshot_client,
+            index_builder=index_builder,
+        )
+
+        first_result = worker.process(event)
+        second_result = worker.process(event)
+
+        assert (
+            first_result.action
+            == ProcessingAction.ACK_COMPLETED
+        )
+        assert (
+            second_result.action
+            == ProcessingAction.ACK_DUPLICATE
+        )
+
+        assert snapshot_client.call_count == 1
+        assert index_builder.call_count == 1
+
+
+def test_invalid_snapshot_retries_then_dead_letters(
+    tmp_path,
+) -> None:
+    original_text = "Original official content"
+    event = make_event(
+        clean_text=original_text,
+        source_version=1,
+    )
+
+    invalid_snapshot = make_snapshot(
+        event,
+        clean_text="Modified or damaged content",
+    )
+
+    snapshot_client = FakeSnapshotClient(invalid_snapshot)
+    index_builder = FakeIndexBuilder(index_version=1)
+
+    with IndexerStore(
+        tmp_path / "indexer.sqlite3"
+    ) as store:
+        worker = IndexingWorker(
+            store=store,
+            snapshot_client=snapshot_client,
+            index_builder=index_builder,
+            max_attempts=3,
+        )
+
+        first_result = worker.process(event)
+        second_result = worker.process(event)
+        third_result = worker.process(event)
+
+        assert first_result.action == ProcessingAction.RETRY
+        assert second_result.action == ProcessingAction.RETRY
+        assert (
+            third_result.action
+            == ProcessingAction.DEAD_LETTER
+        )
+
+        stored_event = store.get_event(event.event_id)
+        assert stored_event is not None
+        assert stored_event.status == "failed"
+        assert stored_event.attempt_count == 3
+
+        assert store.get_active_source("S001") is None
+        assert index_builder.call_count == 0
+
+
+def test_worker_skips_obsolete_event_before_fetching(
+    tmp_path,
+) -> None:
+    newer_event = make_event(
+        clean_text="Newer content",
+        source_version=2,
+    )
+    older_event = make_event(
+        clean_text="Older content",
+        source_version=1,
+    )
+
+    snapshot_client = FakeSnapshotClient(
+        make_snapshot(
+            older_event,
+            clean_text="Older content",
+        )
+    )
+    index_builder = FakeIndexBuilder(index_version=3)
+
+    with IndexerStore(
+        tmp_path / "indexer.sqlite3"
+    ) as store:
+        assert store.start_attempt(newer_event) is True
+        assert store.activate(
+            newer_event,
+            index_version=2,
+        ) is True
+
+        worker = IndexingWorker(
+            store=store,
+            snapshot_client=snapshot_client,
+            index_builder=index_builder,
+        )
+
+        result = worker.process(older_event)
+
+        assert result.action == ProcessingAction.ACK_OBSOLETE
+        assert result.index_version == 2
+
+        assert snapshot_client.call_count == 0
+        assert index_builder.call_count == 0
