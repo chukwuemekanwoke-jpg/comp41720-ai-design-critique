@@ -624,3 +624,83 @@ def test_different_snapshots_store_separate_passages(
             passages_a[0].passage_id
             != passages_b[0].passage_id
         )
+
+
+def test_create_ready_index_manifest(
+    tmp_path,
+) -> None:
+    clean_text = (
+        "one two three four five six seven"
+    )
+    event = make_event(
+        clean_text=clean_text,
+        source_version=1,
+    )
+    chunker = DeterministicChunker(
+        max_words=4,
+        overlap_words=1,
+    )
+    passages = chunker.chunk(
+        snapshot_id=event.snapshot_id,
+        clean_text=clean_text,
+    )
+
+    with IndexerStore(
+        tmp_path / "indexer.sqlite3"
+    ) as store:
+        store.save_passages(passages)
+
+        index_version = store.create_index_version(
+            event,
+            passages,
+        )
+
+        assert index_version == 1
+        assert store.get_index_status(1) == "ready"
+
+        # A ready candidate is not visible to readers yet.
+        assert store.get_current_index_version() is None
+
+        indexed_source = store.get_index_source(
+            index_version=1,
+            source_id="S001",
+        )
+
+        assert indexed_source is not None
+        assert indexed_source.source_version == 1
+        assert indexed_source.snapshot_id == event.snapshot_id
+
+        assert store.get_index_passage_ids(
+            index_version=1,
+            source_id="S001",
+        ) == [
+            passage.passage_id
+            for passage in passages
+        ]
+
+
+def test_index_manifest_requires_saved_passages(
+    tmp_path,
+) -> None:
+    clean_text = "official source information"
+    event = make_event(
+        clean_text=clean_text,
+        source_version=1,
+    )
+    chunker = DeterministicChunker()
+    passages = chunker.chunk(
+        snapshot_id=event.snapshot_id,
+        clean_text=clean_text,
+    )
+
+    with IndexerStore(
+        tmp_path / "indexer.sqlite3"
+    ) as store:
+        with pytest.raises(
+            ValueError,
+            match="passage must be saved",
+        ):
+            store.create_index_version(
+                event,
+                passages,
+            )
