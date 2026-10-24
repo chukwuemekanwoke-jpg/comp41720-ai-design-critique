@@ -541,3 +541,86 @@ def test_chunker_rejects_empty_text() -> None:
             snapshot_id="S001:snapshot-a",
             clean_text="   ",
         )
+
+
+def test_store_persists_passages(
+    tmp_path,
+) -> None:
+    chunker = DeterministicChunker(
+        max_words=4,
+        overlap_words=1,
+    )
+
+    passages = chunker.chunk(
+        snapshot_id="S001:snapshot-a",
+        clean_text="one two three four five six seven",
+    )
+
+    with IndexerStore(
+        tmp_path / "indexer.sqlite3"
+    ) as store:
+        store.save_passages(passages)
+
+        stored = store.get_passages(
+            snapshot_id="S001:snapshot-a",
+            chunker_version="word-window-v1",
+        )
+
+        assert stored == passages
+        assert store.count_passages() == 2
+
+
+def test_saving_same_snapshot_does_not_duplicate_passages(
+    tmp_path,
+) -> None:
+    chunker = DeterministicChunker(
+        max_words=4,
+        overlap_words=1,
+    )
+
+    version_1_a = chunker.chunk(
+        snapshot_id="S001:snapshot-a",
+        clean_text="one two three four five six seven",
+    )
+    version_3_a = chunker.chunk(
+        snapshot_id="S001:snapshot-a",
+        clean_text="one two three four five six seven",
+    )
+
+    with IndexerStore(
+        tmp_path / "indexer.sqlite3"
+    ) as store:
+        store.save_passages(version_1_a)
+        store.save_passages(version_3_a)
+
+        assert store.count_passages() == 2
+
+
+def test_different_snapshots_store_separate_passages(
+    tmp_path,
+) -> None:
+    chunker = DeterministicChunker(
+        max_words=4,
+        overlap_words=1,
+    )
+
+    passages_a = chunker.chunk(
+        snapshot_id="S001:snapshot-a",
+        clean_text="content from snapshot A",
+    )
+    passages_b = chunker.chunk(
+        snapshot_id="S001:snapshot-b",
+        clean_text="content from snapshot B",
+    )
+
+    with IndexerStore(
+        tmp_path / "indexer.sqlite3"
+    ) as store:
+        store.save_passages(passages_a)
+        store.save_passages(passages_b)
+
+        assert store.count_passages() == 2
+        assert (
+            passages_a[0].passage_id
+            != passages_b[0].passage_id
+        )
