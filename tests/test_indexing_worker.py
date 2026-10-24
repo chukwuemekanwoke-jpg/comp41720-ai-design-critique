@@ -15,6 +15,8 @@ from indexing_worker.worker import (
     ProcessingAction,
 )
 
+from indexing_worker.chunking import DeterministicChunker
+
 
 def make_event_payload(
     clean_text: str = "Official information about Stamp 1G.",
@@ -463,3 +465,79 @@ def test_worker_skips_obsolete_event_before_fetching(
 
         assert snapshot_client.call_count == 0
         assert index_builder.call_count == 0
+
+
+def test_chunker_creates_overlapping_passages() -> None:
+    chunker = DeterministicChunker(
+        max_words=4,
+        overlap_words=1,
+    )
+
+    passages = chunker.chunk(
+        snapshot_id="S001:snapshot-a",
+        clean_text="one two three four five six seven",
+    )
+
+    assert [passage.text for passage in passages] == [
+        "one two three four",
+        "four five six seven",
+    ]
+
+    assert passages[0].chunk_index == 0
+    assert passages[1].chunk_index == 1
+
+
+def test_chunker_is_deterministic() -> None:
+    chunker = DeterministicChunker(
+        max_words=3,
+        overlap_words=1,
+    )
+
+    first = chunker.chunk(
+        snapshot_id="S001:snapshot-a",
+        clean_text="one two three four five",
+    )
+    second = chunker.chunk(
+        snapshot_id="S001:snapshot-a",
+        clean_text="one two three four five",
+    )
+
+    assert first == second
+    assert (
+        [passage.passage_id for passage in first]
+        == [passage.passage_id for passage in second]
+    )
+
+
+def test_content_reversion_reuses_passage_ids() -> None:
+    chunker = DeterministicChunker(
+        max_words=3,
+        overlap_words=1,
+    )
+
+    version_1_a = chunker.chunk(
+        snapshot_id="S001:snapshot-a",
+        clean_text="content A returns again later",
+    )
+    version_3_a = chunker.chunk(
+        snapshot_id="S001:snapshot-a",
+        clean_text="content A returns again later",
+    )
+
+    assert (
+        [passage.passage_id for passage in version_1_a]
+        == [passage.passage_id for passage in version_3_a]
+    )
+
+
+def test_chunker_rejects_empty_text() -> None:
+    chunker = DeterministicChunker()
+
+    with pytest.raises(
+        ValueError,
+        match="clean_text cannot be empty",
+    ):
+        chunker.chunk(
+            snapshot_id="S001:snapshot-a",
+            clean_text="   ",
+        )
