@@ -17,6 +17,8 @@ from indexing_worker.worker import (
 
 from indexing_worker.chunking import DeterministicChunker
 
+from indexing_worker.index import SQLiteIndexBuilder
+
 
 def make_event_payload(
     clean_text: str = "Official information about Stamp 1G.",
@@ -806,3 +808,113 @@ def test_new_index_supersedes_previous_index(
             index_b
         ) == "active"
         assert store.get_current_index_version() == index_b
+
+
+def test_real_index_builder_completes_worker_flow(
+    tmp_path,
+) -> None:
+    clean_text = "official information about Stamp 1G"
+    event = make_event(
+        clean_text=clean_text,
+        source_version=1,
+    )
+    snapshot = make_snapshot(event, clean_text)
+
+    with IndexerStore(
+        tmp_path / "indexer.sqlite3"
+    ) as store:
+        worker = IndexingWorker(
+            store=store,
+            snapshot_client=FakeSnapshotClient(snapshot),
+            index_builder=SQLiteIndexBuilder(store),
+        )
+
+        result = worker.process(event)
+
+        assert result.action == ProcessingAction.ACK_COMPLETED
+        assert result.index_version == 1
+        assert store.get_current_index_version() == 1
+        assert store.get_index_status(1) == "active"
+        assert store.count_passages() == 1
+
+
+def test_real_builder_reuses_content_after_a_b_a(
+    tmp_path,
+) -> None:
+    event_a1 = make_event(
+        clean_text="Content A",
+        source_version=1,
+    )
+    event_b = make_event(
+        clean_text="Content B",
+        source_version=2,
+    )
+    event_a3 = make_event(
+        clean_text="Content A",
+        source_version=3,
+    )
+
+    with IndexerStore(
+        tmp_path / "indexer.sqlite3"
+    ) as store:
+        builder = SQLiteIndexBuilder(store)
+
+        events_and_text = [
+            (event_a1, "Content A"),
+            (event_b, "Content B"),
+            (event_a3, "Content A"),
+        ]
+
+        index_versions = []
+
+        for event, clean_text in events_and_text:
+            assert store.start_attempt(event) is True
+
+            snapshot = make_snapshot(
+                event,
+                clean_text,
+            )
+
+            index_version = builder.build_index(
+                event,
+                snapshot,
+            )
+
+            assert store.activate(
+                event,
+                index_version,
+            ) is True
+
+            index_versions.append(index_version)
+
+        index_a1, index_b, index_a3 = index_versions
+
+        # Only A and B are stored; version 3 reuses A.
+        assert store.count_passages() == 2
+
+        assert (
+            store.get_index_passage_ids(
+                index_a1,
+                "S001",
+            )
+            == store.get_index_passage_ids(
+                index_a3,
+                "S001",
+            )
+        )
+
+        assert store.get_index_status(
+            index_a1
+        ) == "superseded"
+        assert store.get_index_status(
+            index_b
+        ) == "superseded"
+        assert store.get_index_status(
+            index_a3
+        ) == "active"
+
+        active = store.get_active_source("S001")
+        assert active is not None
+        assert active.source_version == 3
+        assert active.snapshot_id == event_a1.snapshot_id
+        assert active.index_version == index_a3
