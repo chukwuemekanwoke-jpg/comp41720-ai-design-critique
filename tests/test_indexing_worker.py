@@ -19,6 +19,13 @@ from indexing_worker.chunking import DeterministicChunker
 
 from indexing_worker.index import SQLiteIndexBuilder
 
+from urllib.error import URLError
+
+from indexing_worker.snapshot_client import (
+    CollectorSnapshotClient,
+    SnapshotClientError,
+)
+
 
 def make_event_payload(
     clean_text: str = "Official information about Stamp 1G.",
@@ -918,3 +925,121 @@ def test_real_builder_reuses_content_after_a_b_a(
         assert active.source_version == 3
         assert active.snapshot_id == event_a1.snapshot_id
         assert active.index_version == index_a3
+
+
+class FakeHTTPResponse:
+    def __init__(
+        self,
+        payload: bytes,
+        status: int = 200,
+    ) -> None:
+        self.payload = payload
+        self.status = status
+
+    def read(self) -> bytes:
+        return self.payload
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_):
+        return None
+
+
+def test_collector_snapshot_client_fetches_snapshot(
+    monkeypatch,
+) -> None:
+    clean_text = "Official information about Stamp 1G."
+    event = make_event(
+        clean_text=clean_text,
+        source_version=1,
+    )
+    expected_snapshot = make_snapshot(
+        event,
+        clean_text,
+    )
+
+    response_payload = {
+        "snapshot_id": expected_snapshot.snapshot_id,
+        "source_id": expected_snapshot.source_id,
+        "content_sha256": expected_snapshot.content_sha256,
+        "cleaner_version": expected_snapshot.cleaner_version,
+        "clean_text": expected_snapshot.clean_text,
+    }
+
+    captured = {}
+
+    def fake_urlopen(request, timeout):
+        captured["url"] = request.full_url
+        captured["timeout"] = timeout
+
+        import json
+
+        return FakeHTTPResponse(
+            json.dumps(response_payload).encode("utf-8")
+        )
+
+    monkeypatch.setattr(
+        "indexing_worker.snapshot_client.urlopen",
+        fake_urlopen,
+    )
+
+    client = CollectorSnapshotClient(
+        base_url="http://collector:8000/",
+        timeout_seconds=3.0,
+    )
+
+    snapshot = client.fetch_snapshot(event.snapshot_id)
+
+    assert snapshot == expected_snapshot
+    assert captured["timeout"] == 3.0
+    assert captured["url"].startswith(
+        "http://collector:8000/snapshots/"
+    )
+    assert "%3A" in captured["url"]
+
+
+def test_collector_snapshot_client_reports_connection_failure(
+    monkeypatch,
+) -> None:
+    def failing_urlopen(request, timeout):
+        raise URLError("connection refused")
+
+    monkeypatch.setattr(
+        "indexing_worker.snapshot_client.urlopen",
+        failing_urlopen,
+    )
+
+    client = CollectorSnapshotClient(
+        base_url="http://collector:8000",
+    )
+
+    with pytest.raises(
+        SnapshotClientError,
+        match="Could not connect to the Collector",
+    ):
+        client.fetch_snapshot("S001:snapshot-a")
+
+
+def test_collector_snapshot_client_rejects_invalid_json(
+    monkeypatch,
+) -> None:
+    def fake_urlopen(request, timeout):
+        return FakeHTTPResponse(
+            b"this is not JSON"
+        )
+
+    monkeypatch.setattr(
+        "indexing_worker.snapshot_client.urlopen",
+        fake_urlopen,
+    )
+
+    client = CollectorSnapshotClient(
+        base_url="http://collector:8000",
+    )
+
+    with pytest.raises(
+        SnapshotClientError,
+        match="invalid JSON",
+    ):
+        client.fetch_snapshot("S001:snapshot-a")
