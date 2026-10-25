@@ -26,6 +26,12 @@ from indexing_worker.snapshot_client import (
     SnapshotClientError,
 )
 
+from indexing_worker.message_handler import (
+    MessageAction,
+    RabbitMessageHandler,
+)
+from indexing_worker.worker import ProcessingResult
+
 
 def make_event_payload(
     clean_text: str = "Official information about Stamp 1G.",
@@ -1043,3 +1049,94 @@ def test_collector_snapshot_client_rejects_invalid_json(
         match="invalid JSON",
     ):
         client.fetch_snapshot("S001:snapshot-a")
+
+
+class StubWorker:
+    def __init__(
+        self,
+        action: ProcessingAction,
+        error: str | None = None,
+    ) -> None:
+        self.action = action
+        self.error = error
+
+    def process(
+        self,
+        event: DocumentUpdateEvent,
+    ) -> ProcessingResult:
+        return ProcessingResult(
+            event_id=event.event_id,
+            action=self.action,
+            error=self.error,
+        )
+
+
+def event_body(
+    clean_text: str = "Official information",
+) -> bytes:
+    import json
+
+    return json.dumps(
+        make_event_payload(clean_text)
+    ).encode("utf-8")
+
+
+@pytest.mark.parametrize(
+    "processing_action",
+    [
+        ProcessingAction.ACK_COMPLETED,
+        ProcessingAction.ACK_DUPLICATE,
+        ProcessingAction.ACK_OBSOLETE,
+    ],
+)
+def test_message_handler_acknowledges_final_success(
+    processing_action,
+) -> None:
+    handler = RabbitMessageHandler(
+        StubWorker(processing_action)
+    )
+
+    decision = handler.handle(event_body())
+
+    assert decision.action == MessageAction.ACK
+    assert decision.event_id == "S001:1"
+
+
+def test_message_handler_requeues_transient_failure() -> None:
+    handler = RabbitMessageHandler(
+        StubWorker(
+            ProcessingAction.RETRY,
+            error="Collector unavailable",
+        )
+    )
+
+    decision = handler.handle(event_body())
+
+    assert decision.action == MessageAction.REQUEUE
+    assert decision.error == "Collector unavailable"
+
+
+def test_message_handler_dead_letters_exhausted_failure() -> None:
+    handler = RabbitMessageHandler(
+        StubWorker(
+            ProcessingAction.DEAD_LETTER,
+            error="retry limit reached",
+        )
+    )
+
+    decision = handler.handle(event_body())
+
+    assert decision.action == MessageAction.DEAD_LETTER
+    assert decision.event_id == "S001:1"
+
+
+def test_message_handler_dead_letters_invalid_json() -> None:
+    handler = RabbitMessageHandler(
+        StubWorker(ProcessingAction.ACK_COMPLETED)
+    )
+
+    decision = handler.handle(b"not valid JSON")
+
+    assert decision.action == MessageAction.DEAD_LETTER
+    assert decision.event_id is None
+    assert decision.error is not None
