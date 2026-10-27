@@ -56,3 +56,20 @@
   and optional passage IDs remain integration questions.
 - Run instructions are in `docs/answer-service.md`. Review changes before committing.
 - Next service milestone: Ollama integration and grounded output validation.
+
+## 2026-10-27 - Manual Ollama checks
+
+- Jordan reported manually trying the evidence-only API and committed the milestone.
+- Jordan then sent standalone curl requests directly to local Ollama; the Python
+  service is not connected to Ollama yet.
+- `llama3.2:1b` incorrectly refused the answer-present example with both tested prompts.
+- `llama3.2:3b` answered the same example correctly under the revised prompt and
+  correctly declined when given unrelated evidence.
+- Recorded exact prompts, outputs, model tags, usage and reported timings in
+  [the initial model checks](../model-checks-2026-10-27.md).
+- 3B results: 2.312 seconds including 1.860 seconds loading; subsequent request
+  0.215 seconds, with 80 cached input tokens. These are Ollama-reported durations,
+  not an independently measured latency benchmark.
+- Results come from Jordan's shared JSON responses, not independent reruns.
+- Next: implement a configurable Ollama adapter and test structured responses;
+  keep model choice provisional pending broader evaluation.
