@@ -6,12 +6,13 @@ from pathlib import Path
 from fastapi.testclient import TestClient
 import pytest
 
-from answer_service.app import app
+from answer_service.app import create_app
+from answer_service.config import Settings
 
 
 @pytest.fixture
 def client():
-    with TestClient(app) as test_client:
+    with TestClient(create_app(Settings())) as test_client:
         yield test_client
 
 

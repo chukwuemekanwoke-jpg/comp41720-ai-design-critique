@@ -73,3 +73,38 @@
 - Results come from Jordan's shared JSON responses, not independent reruns.
 - Next: implement a configurable Ollama adapter and test structured responses;
   keep model choice provisional pending broader evaluation.
+
+## 2026-10-27 - Ollama adapter milestone
+
+### Completed
+
+- Added opt-in Ollama mode with configurable URL/model, temperature, context,
+  generation cap, input-character budget and a total client-side deadline.
+- Added structured-output prompt `studentpath-answer-v1` and validation of
+  completed model responses/citation indices. Python supplies citation metadata.
+- Model refusal returns `insufficient_evidence`; failed/invalid model calls
+  preserve the evidence-only fallback. Default mode still requires no Ollama.
+- Added reusable async client lifecycle, adapter tests and opt-in live tests.
+- Inspected roadmap video: Emeka added it on 24 October; FFmpeg encoder metadata
+  and a sampled frame indicate an animated roadmap page, but no authoring
+  platform was identified. Encoding software is not proof of the creation tool.
+
+### Verification
+
+- Default full suite: 95 passed, 4 skipped, 1 existing TestClient warning.
+- `OLLAMA_INTEGRATION=1 .venv/bin/python -m pytest -q -s tests/test_ollama_integration.py`:
+  3 passed against actual local Ollama via the Answer Service in-process API.
+- Supported evidence: `answered`, `a blue form`, 3.168 seconds.
+- Unrelated evidence: `insufficient_evidence`, 0.937 seconds.
+- Deliberately nonexistent model: `degraded`, original evidence preserved, 0.029 seconds.
+- These single-run times include TestClient lifecycle; no general latency claim.
+- Mocked transport/deadline tests are separate from real HTTP checks.
+
+### Limits and next actions
+
+- No retries, circuit breaker, metrics, container or gateway integration yet.
+- Prompt constraints and valid citation indices do not prove semantic support
+  or injection resistance. Character limits are not exact token budgeting.
+- Experimental defaults and ADR-0004 remain proposed for Jordan/team review.
+- Jordan to try Ollama mode through the browser and review the adapter code
+  before committing. Changes remain on the existing feature branch.
