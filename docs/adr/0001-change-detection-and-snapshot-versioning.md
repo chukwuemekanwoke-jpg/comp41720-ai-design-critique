@@ -77,8 +77,20 @@ writes during bounded broker operations. Crashes release the lock and roll back
 the mark, so retries can duplicate confirmed events. No exactly-once guarantee
 is made. Failed publications remain pending and continuous mode retries after a
 configurable fixed delay. See `SOURCE_COLLECTOR.md` for configuration, tests and
-the snapshot-reversion coordination issue with ADR-0002. Snapshot retrieval and
-scheduled collection are not implemented yet.
+the snapshot-reversion coordination issue with ADR-0002.
+
+## Snapshot retrieval implementation (2026-10-26)
+
+Kezhen confirmed the event and five-field snapshot response contract. The
+Collector now provides read-only `GET /snapshots/{snapshot_id}` through
+`source_collector.snapshot_api`. Responses return the exact stored clean text,
+content identity and cleaner version, never the latest live page. Read requests
+do not write to SQLite; missing stores fail startup instead of creating an empty
+database. Identity/hash corruption is reported as an error. Default local demo
+address: `http://127.0.0.1:8001`. See `docs/collector-snapshot-api.md` for setup,
+error semantics and actual HTTP compatibility validation against PR #4.
+Scheduled collection, real-source validation and live broker-to-indexer
+integration remain outstanding. No Indexer implementation is changed here.
 
 ## Remaining open questions
 

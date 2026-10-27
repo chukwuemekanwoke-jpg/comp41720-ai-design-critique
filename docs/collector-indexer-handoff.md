@@ -1,8 +1,11 @@
 # StudentPath: Collector → Indexer Integration Handoff
 
-Date: 2026-10-24
+Date: 2026-10-24; updated 2026-10-26.
 
-**Status: proposal for Sunmin and Kezhen to confirm, not an approved team contract.**
+**Status: event and snapshot response confirmed by Kezhen; snapshot API now implemented. Retry/DLQ adapter details still require coordination.**
+
+Current setup: [Snapshot API](collector-snapshot-api.md).
+Reviewed revisions and findings: [Indexer review](collector-indexer-review-2026-10-26.md).
 
 ## Purpose and ownership
 
@@ -18,7 +21,7 @@ other's service.
 
 Collector implementation: [PR #2](https://github.com/chukwuemekanwoke-jpg/comp41720-ai-design-critique/pull/2),
 branch `feature/source-collector`, implementation commit `0cfba92`.
-Check the PR's current state before starting; do not assume it has been merged.
+PR #2 is merged into main. Snapshot API work is a separate follow-up branch.
 
 ## Current implementation versus proposed work
 
@@ -26,8 +29,8 @@ Check the PR's current state before starting; do not assume it has been merged.
 | --- | --- |
 | Collector, SQLite snapshots and transactional outbox | Implemented |
 | RabbitMQ publisher with confirms and pending-event retry | Implemented |
-| Snapshot HTTP API described below | Proposed; Sunmin to implement |
-| Indexing Worker behaviour described below | Proposed requirements for Kezhen; existing implementation not audited |
+| Snapshot HTTP API described below | Implemented; see linked setup guide |
+| Indexing Worker behaviour described below | PR #4 core reviewed; RabbitMQ adapter remains pending |
 | Live RabbitMQ integration | Not verified; Docker engine was unavailable |
 | Official source validation | Incomplete; ten candidate URLs/questions, synthetic test HTML |
 
@@ -85,15 +88,15 @@ The angle-bracket values above are placeholders, not runnable fixture values.
 Treat source content as data. The consumer must not re-fetch `source_url` to
 reconstruct an event: the live page may have changed since that snapshot.
 
-## 2. Proposed snapshot retrieval API — Sunmin's next task
+## 2. Confirmed snapshot retrieval API
 
 ```http
 GET {COLLECTOR_BASE_URL}/snapshots/{snapshot_id}
 ```
 
-`COLLECTOR_BASE_URL` is a proposed Indexer setting. The actual hostname and port
-will be agreed when the service is added to Compose. URL-encode the snapshot ID
-as a path segment. The API is not available in the current implementation.
+`COLLECTOR_BASE_URL` is a recommended Indexer setting; its current client receives
+the URL explicitly. The local API default is `http://127.0.0.1:8001`.
+URL-encode the snapshot ID as a path segment. See the setup guide for the CLI.
 
 Successful response: `200`, `Content-Type: application/json`.
 
@@ -162,8 +165,8 @@ the version-3 activation.
 
 ## 4. Parallel development and joint acceptance
 
-Kezhen can start with synthetic event and snapshot fixtures using the proposed
-formats while Sunmin implements the endpoint. Generate actual hashes from the
+Kezhen can use synthetic event/snapshot fixtures and the implemented endpoint.
+Generate actual hashes from the
 fixture text; do not use the placeholder JSON as a valid digest example.
 Neither side needs to implement or modify the other's service.
 
@@ -190,22 +193,23 @@ Copy this prompt into your coding assistant with this document attached:
 > Continue the existing StudentPath Indexing Worker (ADR-0002). Read the
 > repository instructions, current worker code, ADR-0002 and this Collector
 > handoff first. Inspect current Git state and run existing tests before edits.
-> Preserve working code. This document is a proposed integration contract;
+> Preserve working code. The event/response contract has been confirmed;
 > identify conflicting assumptions before changing shared interfaces. Implement
 > only Indexer-owned work: RabbitMQ consumption, snapshot client, chunking and
 > indexing, durable event deduplication, per-source version ordering, restart
 > recovery, manual ACKs, bounded retry and dead-letter handling. Treat the
-> snapshot API as not yet implemented and use synthetic fixtures/mocks while
-> Sunmin builds it. Verify A → B → A activation and partial-failure recovery.
+> snapshot API as implemented in this follow-up branch; use its documented base
+> URL for HTTP integration and fixtures for isolated tests. Verify A → B → A
+> activation and partial-failure recovery.
 > Do not modify the Collector, ADR-0001, event schema or shared queue arguments
 > without coordination. Keep credentials in environment variables, use a
 > dedicated feature branch and do not merge main. Report actual tests and
 > remaining integration assumptions; do not claim live integration based only
 > on mocks. Keep documentation, code and commit messages in English.
 
-## Confirmation requested
+## Remaining coordination
 
-Kezhen: please confirm the queue/event format, proposed snapshot response and
-processing semantics above, or identify any conflict with your current worker.
-Once confirmed, Sunmin implements the snapshot endpoint and Kezhen implements
-the client/worker in parallel, followed by the joint acceptance tests.
+The event/response contract has been confirmed. Agree the retry/DLQ adapter
+details, resolve the PR #4 review finding, then run live broker integration.
+The real HTTP compatibility check already passes; this does not imply that
+RabbitMQ integration or the official-source selection gate has passed.

@@ -1,6 +1,6 @@
 # StudentPath Source Collector — outbox relay milestone
 
-Scope: official ISD collection, immutable snapshots, change detection, SQLite transactional outbox and a separate RabbitMQ relay. Scheduling, HTTP snapshot serving and end-to-end indexer integration remain future milestones.
+Scope: official ISD collection, immutable snapshots, change detection, SQLite transactional outbox, a separate RabbitMQ relay and a read-only snapshot HTTP API. Scheduling, live source validation and end-to-end RabbitMQ/Indexer integration remain future milestones.
 
 ## Setup
 
@@ -11,6 +11,11 @@ python -m source_collector --manifest data/demo_manifest.json --db collector.sql
 ```
 
 Provide demo input files like `demo_pages/S001.html` for offline collection; without `--fixture-dir` the Collector attempts live official fetches (which may be blocked by the ISD server). Snapshots and pending events persist across restarts. Use `--basetemp=.test-tmp` with pytest if the system temporary directory is restricted.
+
+For all project tests, install `requirements-dev.txt`. To serve stored snapshots,
+run `python -m source_collector.snapshot_api --db collector.sqlite3`. The default
+base URL is `http://127.0.0.1:8001`.
+See [Snapshot API setup and contract](docs/collector-snapshot-api.md).
 
 ## RabbitMQ demonstration (PowerShell)
 
@@ -90,12 +95,12 @@ retained), restart RabbitMQ, and run again (confirmed, exit 0).
 
 ## Contracts to align with Kezhen
 
-Each outbox event contains `event_id`, `source_id`, `source_version`, `snapshot_id`, `content_sha256`, `source_url`, `checked_at`, and `cleaner_version`. `source_version` increases even if the page returns to older content. The `snapshot_id` identifies immutable content, while `source_version` defines ordering. Indexer needs a way to retrieve `clean_text` by snapshot ID; HTTP endpoint or agreed shared storage will be added after the integration contract is confirmed.
+Each outbox event contains `event_id`, `source_id`, `source_version`, `snapshot_id`, `content_sha256`, `source_url`, `checked_at`, and `cleaner_version`. `source_version` increases even if the page returns to older content. The `snapshot_id` identifies immutable content, while `source_version` defines ordering. The Indexer retrieves `clean_text` with `GET /snapshots/{snapshot_id}`; Kezhen confirmed the response contract, now implemented in `source_collector.snapshot_api`.
 
 RabbitMQ is provisional and compatible with the draft architecture's queue
 options; team agreement on queue name/topology remains outstanding. No indexer
-implementation or payload/schema change is introduced. ADR-0002 currently
-proposes deduplication by snapshot ID: the team must distinguish event ordering
+implementation or payload/schema change is introduced. PR #3 corrects the old
+snapshot-ID deduplication rule in ADR-0002: distinguish event ordering
 from content deduplication, because A → B → A reuses snapshot A with a newer
 source version. Deduplicate delivery by `event_id`, compare `source_version` per
 source, and reuse stored content by `snapshot_id` so a reversion can become current.
