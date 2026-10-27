@@ -1,0 +1,71 @@
+openapi: 3.0.3
+info:
+  title: StudentPath Gateway Public API (stub contract)
+  version: 1.0.0
+paths:
+  /v1/questions:
+    post:
+      operationId: askQuestion
+      parameters:
+        - in: header
+          name: X-Request-ID
+          schema: {type: string, maxLength: 64}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [question]
+              properties:
+                question: {type: string, minLength: 3, maxLength: 500}
+      responses:
+        '200':
+          description: Answer, insufficient evidence or fallback
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [request_id, status, answer, checklist, sources, index_version, last_success_at, fallback_used, model, notice]
+                properties:
+                  request_id: {type: string}
+                  status: {type: string, enum: [answered, insufficient_evidence, degraded]}
+                  answer: {type: string, nullable: true}
+                  checklist: {type: array, items: {type: string}}
+                  sources:
+                    type: array
+                    items:
+                      type: object
+                      required: [source_id, snapshot_id, source_version, url, passage]
+                      properties:
+                        source_id: {type: string}
+                        snapshot_id: {type: string}
+                        source_version: {type: integer}
+                        url: {type: string}
+                        passage: {type: string}
+                  index_version: {type: string}
+                  last_success_at: {type: string, nullable: true}
+                  fallback_used: {type: boolean}
+                  model:
+                    type: object
+                    required: [name, prompt_version]
+                    properties:
+                      name: {type: string}
+                      prompt_version: {type: string}
+                  notice: {type: string}
+                  stub: {type: boolean, description: Present only in placeholder implementation}
+        '400': {description: Invalid request}
+        '502': {description: Upstream unavailable}
+        '504': {description: Upstream timeout}
+  /healthz:
+    get:
+      responses:
+        '200': {description: Liveness}
+  /readyz:
+    get:
+      responses:
+        '200': {description: Readiness}
+  /metrics:
+    get:
+      responses:
+        '200': {description: Prometheus metrics}
