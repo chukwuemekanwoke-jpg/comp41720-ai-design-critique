@@ -101,6 +101,7 @@ class IndexerStore:
                     )
                 ),
                 created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                base_index_version INTEGER,
                 activated_at TEXT
             );
 
@@ -332,7 +333,7 @@ class IndexerStore:
 
             candidate = self.connection.execute(
                 """
-                    SELECT status
+                    SELECT status, base_index_version
                     FROM index_versions
                     WHERE index_version = ?
                     """,
@@ -381,6 +382,21 @@ class IndexerStore:
                         WHERE singleton = 1
                         """
                 ).fetchone()
+
+                current_index_version = (
+                    int(previous["index_version"])
+                    if previous is not None
+                    else None
+                )
+
+                if (
+                    candidate["base_index_version"]
+                    != current_index_version
+                ):
+                    raise ValueError(
+                        "stale index candidate: current index changed "
+                        "after the candidate was built"
+                    )
 
                 if previous is not None:
                     self.connection.execute(
@@ -633,11 +649,28 @@ class IndexerStore:
                         "stored passage belongs to a different snapshot"
                     )
 
+            current = self.connection.execute(
+                """
+                SELECT index_version
+                FROM current_index
+                WHERE singleton = 1
+                """
+            ).fetchone()
+
+            base_index_version = (
+                int(current["index_version"])
+                if current is not None
+                else None
+            )
             cursor = self.connection.execute(
                 """
-                INSERT INTO index_versions (status)
-                VALUES ('building')
-                """
+            INSERT INTO index_versions (
+                status,
+                base_index_version
+            )
+            VALUES ('building', ?)
+            """,
+                (base_index_version,),
             )
 
             last_row_id = cursor.lastrowid
@@ -648,14 +681,6 @@ class IndexerStore:
                 )
 
             index_version = int(last_row_id)
-
-            current = self.connection.execute(
-                """
-                SELECT index_version
-                FROM current_index
-                WHERE singleton = 1
-                """
-            ).fetchone()
 
             if current is not None:
                 current_version = current["index_version"]

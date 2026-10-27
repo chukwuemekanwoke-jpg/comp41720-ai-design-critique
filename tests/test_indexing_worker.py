@@ -36,14 +36,13 @@ from indexing_worker.worker import ProcessingResult
 def make_event_payload(
     clean_text: str = "Official information about Stamp 1G.",
     source_version: int = 1,
+    source_id: str = "S001",
 ) -> dict:
     """Create a valid Collector event for tests."""
 
     content_sha256 = hashlib.sha256(
         clean_text.encode("utf-8")
     ).hexdigest()
-
-    source_id = "S001"
 
     return {
         "event_id": f"{source_id}:{source_version}",
@@ -131,11 +130,13 @@ def test_modified_snapshot_text_is_rejected() -> None:
 def make_event(
     clean_text: str = "Official information about Stamp 1G.",
     source_version: int = 1,
+    source_id: str = "S001",
 ) -> DocumentUpdateEvent:
     return DocumentUpdateEvent.from_dict(
         make_event_payload(
             clean_text=clean_text,
             source_version=source_version,
+            source_id=source_id,
         )
     )
 
@@ -821,6 +822,165 @@ def test_new_index_supersedes_previous_index(
             index_b
         ) == "active"
         assert store.get_current_index_version() == index_b
+
+
+def test_stale_candidate_cannot_replace_newer_current_index(
+    tmp_path,
+) -> None:
+    chunker = DeterministicChunker()
+
+    event_s001 = make_event(
+        clean_text="Information from source one",
+        source_version=1,
+        source_id="S001",
+    )
+    event_s002 = make_event(
+        clean_text="Information from source two",
+        source_version=1,
+        source_id="S002",
+    )
+
+    with IndexerStore(
+        tmp_path / "indexer.sqlite3"
+    ) as store:
+        assert store.start_attempt(event_s001) is True
+        passages_s001 = chunker.chunk(
+            snapshot_id=event_s001.snapshot_id,
+            clean_text="Information from source one",
+        )
+        store.save_passages(passages_s001)
+        index_s001 = store.create_index_version(
+            event_s001,
+            passages_s001,
+        )
+
+        # Build S002 before S001 has been activated. Both candidates
+        # are therefore based on the same empty current index.
+        assert store.start_attempt(event_s002) is True
+        passages_s002 = chunker.chunk(
+            snapshot_id=event_s002.snapshot_id,
+            clean_text="Information from source two",
+        )
+        store.save_passages(passages_s002)
+        index_s002 = store.create_index_version(
+            event_s002,
+            passages_s002,
+        )
+
+        assert store.activate(
+            event_s001,
+            index_s001,
+        ) is True
+
+        with pytest.raises(
+            ValueError,
+            match="stale",
+        ):
+            store.activate(
+                event_s002,
+                index_s002,
+            )
+
+        # Rejecting the stale S002 candidate must leave S001 current.
+        current_index = store.get_current_index_version()
+
+        assert current_index is not None
+        assert current_index == index_s001
+        assert store.get_index_source(
+            current_index,
+            "S001",
+        ) is not None
+
+
+def test_worker_retries_stale_candidate_and_preserves_sources(
+    tmp_path,
+) -> None:
+    text_s001 = "Information from source one"
+    text_s002 = "Information from source two"
+
+    event_s001 = make_event(
+        clean_text=text_s001,
+        source_version=1,
+        source_id="S001",
+    )
+    event_s002 = make_event(
+        clean_text=text_s002,
+        source_version=1,
+        source_id="S002",
+    )
+
+    with IndexerStore(
+        tmp_path / "indexer.sqlite3"
+    ) as store:
+        real_builder = SQLiteIndexBuilder(store)
+
+        # Build S001 but deliberately do not activate it yet.
+        assert store.start_attempt(event_s001) is True
+        index_s001 = real_builder.build_index(
+            event_s001,
+            make_snapshot(event_s001, text_s001),
+        )
+
+        class InterleavingIndexBuilder:
+            def __init__(self) -> None:
+                self.has_activated_s001 = False
+
+            def build_index(
+                self,
+                event: DocumentUpdateEvent,
+                snapshot: SnapshotResponse,
+            ) -> int:
+                candidate = real_builder.build_index(
+                    event,
+                    snapshot,
+                )
+
+                # During the first S002 build, another worker activates
+                # S001, making the S002 candidate stale.
+                if not self.has_activated_s001:
+                    assert store.activate(
+                        event_s001,
+                        index_s001,
+                    ) is True
+                    self.has_activated_s001 = True
+
+                return candidate
+
+        worker = IndexingWorker(
+            store=store,
+            snapshot_client=FakeSnapshotClient(
+                make_snapshot(event_s002, text_s002)
+            ),
+            index_builder=InterleavingIndexBuilder(),
+            max_attempts=3,
+        )
+
+        first_result = worker.process(event_s002)
+
+        assert first_result.action == ProcessingAction.RETRY
+        assert (
+            store.get_current_index_version()
+            == index_s001
+        )
+
+        second_result = worker.process(event_s002)
+
+        assert (
+            second_result.action
+            == ProcessingAction.ACK_COMPLETED
+        )
+
+        current_index = store.get_current_index_version()
+        assert current_index is not None
+
+        assert store.get_index_source(
+            current_index,
+            "S001",
+        ) is not None
+        assert store.get_index_source(
+            current_index,
+            "S002",
+        ) is not None
 
 
 def test_real_index_builder_completes_worker_flow(
