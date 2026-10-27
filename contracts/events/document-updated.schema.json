@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "StudentPath document.updated v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "event_id",
+    "source_id",
+    "source_version",
+    "snapshot_id",
+    "content_sha256",
+    "source_url",
+    "checked_at",
+    "cleaner_version"
+  ],
+  "properties": {
+    "event_id": {
+      "type": "string",
+      "pattern": "^[^:]+:[1-9][0-9]*$"
+    },
+    "source_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "source_version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "snapshot_id": {
+      "type": "string",
+      "pattern": "^[^:]+:[a-f0-9]{64}$"
+    },
+    "content_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "source_url": {
+      "type": "string",
+      "pattern": "^https://"
+    },
+    "checked_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "cleaner_version": {
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}
