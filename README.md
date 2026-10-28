@@ -157,5 +157,9 @@ decisions, is in [docs/architecture.md](docs/architecture.md).
 
 ## Status
 
+The standalone [Retrieval API prototype](docs/retrieval-api.md) implements
+`POST /v1/retrieve` with ranked keyword search, pinned index versions, provenance
+and synthetic demo data. SQLite integration awaits an agreed index read contract.
+
 Topic selected on 17 October 2026. The next steps are the source-validation
 gate, the service split with an owner for each, and the five ADRs.
