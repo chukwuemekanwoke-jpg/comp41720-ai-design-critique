@@ -1,0 +1,32 @@
+openapi: 3.0.3
+info:
+  title: StudentPath Collector Snapshot API
+  version: 1.0.0
+paths:
+  /snapshots/{snapshot_id}:
+    get:
+      operationId: getSnapshot
+      parameters:
+        - in: path
+          name: snapshot_id
+          required: true
+          schema: {type: string}
+      responses:
+        '200':
+          description: Immutable stored snapshot
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [snapshot_id, source_id, content_sha256, cleaner_version, clean_text]
+                properties:
+                  snapshot_id: {type: string}
+                  source_id: {type: string}
+                  content_sha256: {type: string, pattern: '^[a-f0-9]{64}$'}
+                  cleaner_version: {type: string}
+                  clean_text: {type: string}
+        '400': {description: Malformed ID}
+        '404': {description: Snapshot not found}
+        '500': {description: Integrity failure}
+        '503': {description: Store unavailable}
