@@ -1,11 +1,13 @@
 openapi: 3.0.3
 info:
-  title: StudentPath Gateway Public API (stub contract)
-  version: 1.0.0
+  title: StudentPath Gateway API
+  version: 1.1.0
+  description: Questions/health/metrics are existing stub interfaces. All x-implementation proposed operations require backend work; this file does not enable authentication or uploads.
 paths:
   /v1/questions:
     post:
       operationId: askQuestion
+      x-implementation: stub
       parameters:
         - in: header
           name: X-Request-ID
@@ -54,9 +56,136 @@ paths:
                       prompt_version: {type: string}
                   notice: {type: string}
                   stub: {type: boolean, description: Present only in placeholder implementation}
-        '400': {description: Invalid request}
-        '502': {description: Upstream unavailable}
-        '504': {description: Upstream timeout}
+        '400': {$ref: 'common.openapi.yaml#/components/responses/Error'}
+        '502': {$ref: 'common.openapi.yaml#/components/responses/Error'}
+        '504': {$ref: 'common.openapi.yaml#/components/responses/Error'}
+  /v1/collection:
+    get:
+      operationId: getCollectionStatus
+      x-implementation: proposed
+      description: Report committed index metadata from a backend read model, never from manifest review dates.
+      responses:
+        '200':
+          description: Collection state. Unavailable collections have null version/freshness.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [request_id, status, index_version, last_success_at, document_count]
+                properties:
+                  request_id: {type: string}
+                  status: {type: string, enum: [available, updating, unavailable]}
+                  index_version: {type: string, nullable: true}
+                  last_success_at: {type: string, format: date-time, nullable: true}
+                  document_count: {type: integer, minimum: 0}
+        '503': {$ref: 'common.openapi.yaml#/components/responses/Error'}
+  /v1/admin/session:
+    get:
+      operationId: getAdministratorSession
+      x-implementation: proposed
+      security: [{AdminBearer: []}]
+      description: Validate issuer, signature, audience, expiry and administrator role server-side. Sign-in itself uses the chosen identity provider.
+      responses:
+        '200':
+          description: Verified administrator identity, not a client-side login flag.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [request_id, subject, roles]
+                properties:
+                  request_id: {type: string}
+                  subject: {type: string}
+                  roles: {type: array, items: {type: string, enum: [policy_admin]}}
+        '401': {$ref: 'common.openapi.yaml#/components/responses/Error'}
+        '403': {$ref: 'common.openapi.yaml#/components/responses/Error'}
+  /v1/admin/policies:
+    post:
+      operationId: submitPolicyForReview
+      x-implementation: proposed
+      security: [{AdminBearer: []}]
+      description: Stage official policy material for review. No personal documents. Does not immediately make it searchable.
+      parameters:
+        - {$ref: 'common.openapi.yaml#/components/parameters/RequestId'}
+        - {$ref: '#/components/parameters/IdempotencyKey'}
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema: {$ref: 'common.openapi.yaml#/components/schemas/Upload'}
+      responses:
+        '202':
+          description: Persisted pending_review job. Same administrator/key/content returns the same job; key reuse with changed content is 409.
+          headers:
+            Location: {schema: {type: string}, description: 'Gateway-relative /v1/admin/jobs/{job_id}.'}
+            X-Request-ID: {$ref: 'common.openapi.yaml#/components/headers/RequestId'}
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [request_id, job]
+                properties:
+                  request_id: {type: string}
+                  job: {$ref: 'common.openapi.yaml#/components/schemas/Job'}
+        '400': {$ref: 'common.openapi.yaml#/components/responses/Error'}
+        '401': {$ref: 'common.openapi.yaml#/components/responses/Error'}
+        '403': {$ref: 'common.openapi.yaml#/components/responses/Error'}
+        '409': {$ref: 'common.openapi.yaml#/components/responses/Error'}
+        '413': {$ref: 'common.openapi.yaml#/components/responses/Error'}
+        '415': {$ref: 'common.openapi.yaml#/components/responses/Error'}
+        '502': {$ref: 'common.openapi.yaml#/components/responses/Error'}
+        '504': {$ref: 'common.openapi.yaml#/components/responses/Error'}
+  /v1/admin/policies/{policy_id}/approve:
+    post:
+      operationId: approvePolicy
+      x-implementation: proposed
+      security: [{AdminBearer: []}]
+      parameters:
+        - {in: path, name: policy_id, required: true, schema: {type: string}}
+        - {$ref: 'common.openapi.yaml#/components/parameters/RequestId'}
+        - {$ref: '#/components/parameters/IdempotencyKey'}
+      description: Approve reviewed provenance/extracted content and queue indexing. Repeated approval must not publish duplicate effects.
+      responses:
+        '202':
+          description: Queued or existing later-state job.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [request_id, job]
+                properties:
+                  request_id: {type: string}
+                  job: {$ref: 'common.openapi.yaml#/components/schemas/Job'}
+        '401': {$ref: 'common.openapi.yaml#/components/responses/Error'}
+        '403': {$ref: 'common.openapi.yaml#/components/responses/Error'}
+        '404': {$ref: 'common.openapi.yaml#/components/responses/Error'}
+        '409': {$ref: 'common.openapi.yaml#/components/responses/Error'}
+        '502': {$ref: 'common.openapi.yaml#/components/responses/Error'}
+        '504': {$ref: 'common.openapi.yaml#/components/responses/Error'}
+  /v1/admin/jobs/{job_id}:
+    get:
+      operationId: getPolicyJob
+      x-implementation: proposed
+      security: [{AdminBearer: []}]
+      parameters:
+        - {in: path, name: job_id, required: true, schema: {type: string}}
+        - {$ref: 'common.openapi.yaml#/components/parameters/RequestId'}
+      responses:
+        '200':
+          description: Authorised job state; indexed only after committed generation activation. Suggested polling interval is 2 seconds, with backoff.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [request_id, job]
+                properties:
+                  request_id: {type: string}
+                  job: {$ref: 'common.openapi.yaml#/components/schemas/Job'}
+        '401': {$ref: 'common.openapi.yaml#/components/responses/Error'}
+        '403': {$ref: 'common.openapi.yaml#/components/responses/Error'}
+        '404': {$ref: 'common.openapi.yaml#/components/responses/Error'}
+        '502': {$ref: 'common.openapi.yaml#/components/responses/Error'}
+        '504': {$ref: 'common.openapi.yaml#/components/responses/Error'}
   /healthz:
     get:
       responses:
@@ -69,3 +198,17 @@ paths:
     get:
       responses:
         '200': {description: Prometheus metrics}
+components:
+  securitySchemes:
+    AdminBearer:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Proposed identity-provider token. Provider/issuer/audience configuration remains to be agreed.
+  parameters:
+    IdempotencyKey:
+      in: header
+      name: Idempotency-Key
+      required: true
+      description: Opaque client-generated key; retain result for at least 24 hours, scoped to administrator and operation. Compare content hashes, not raw multipart encoding.
+      schema: {type: string, minLength: 1, maxLength: 128}

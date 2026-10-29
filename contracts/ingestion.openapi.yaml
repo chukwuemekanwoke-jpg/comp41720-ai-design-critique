@@ -1,0 +1,90 @@
+openapi: 3.0.3
+info:
+  title: StudentPath policy ingestion extension (proposal)
+  version: 0.1.0
+  description: Not implemented. Requires collector/indexer owner approval. Does not alter the existing snapshot API or eight-field update event.
+security: [{ServiceBearer: []}]
+paths:
+  /v1/ingestions:
+    post:
+      operationId: stagePolicyIngestion
+      x-implementation: proposed
+      description: Persist bytes, metadata, content hash and pending_review job before 202. Approval creates the immutable clean snapshot and existing outbox event atomically.
+      parameters:
+        - {$ref: 'common.openapi.yaml#/components/parameters/RequestId'}
+        - {$ref: '#/components/parameters/Actor'}
+        - {$ref: '#/components/parameters/IdempotencyKey'}
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema: {$ref: 'common.openapi.yaml#/components/schemas/Upload'}
+      responses:
+        '202': {$ref: '#/components/responses/Job'}
+        '400': {$ref: 'common.openapi.yaml#/components/responses/Error'}
+        '401': {$ref: 'common.openapi.yaml#/components/responses/Error'}
+        '403': {$ref: 'common.openapi.yaml#/components/responses/Error'}
+        '409': {$ref: 'common.openapi.yaml#/components/responses/Error'}
+        '413': {$ref: 'common.openapi.yaml#/components/responses/Error'}
+        '415': {$ref: 'common.openapi.yaml#/components/responses/Error'}
+        '503': {$ref: 'common.openapi.yaml#/components/responses/Error'}
+  /v1/ingestions/{policy_id}/approve:
+    post:
+      operationId: approvePolicyIngestion
+      x-implementation: proposed
+      parameters:
+        - {in: path, name: policy_id, required: true, schema: {type: string}}
+        - {$ref: 'common.openapi.yaml#/components/parameters/RequestId'}
+        - {$ref: '#/components/parameters/Actor'}
+        - {$ref: '#/components/parameters/IdempotencyKey'}
+      description: Enforce legal state transition. Use existing outbox/duplicate handling; repeated approval cannot produce duplicate state changes.
+      responses:
+        '202': {$ref: '#/components/responses/Job'}
+        '401': {$ref: 'common.openapi.yaml#/components/responses/Error'}
+        '403': {$ref: 'common.openapi.yaml#/components/responses/Error'}
+        '404': {$ref: 'common.openapi.yaml#/components/responses/Error'}
+        '409': {$ref: 'common.openapi.yaml#/components/responses/Error'}
+        '503': {$ref: 'common.openapi.yaml#/components/responses/Error'}
+  /v1/ingestion-jobs/{job_id}:
+    get:
+      operationId: readIngestionJob
+      x-implementation: proposed
+      parameters:
+        - {in: path, name: job_id, required: true, schema: {type: string}}
+        - {$ref: 'common.openapi.yaml#/components/parameters/RequestId'}
+        - {$ref: '#/components/parameters/Actor'}
+      responses:
+        '200': {$ref: '#/components/responses/Job'}
+        '401': {$ref: 'common.openapi.yaml#/components/responses/Error'}
+        '403': {$ref: 'common.openapi.yaml#/components/responses/Error'}
+        '404': {$ref: 'common.openapi.yaml#/components/responses/Error'}
+        '503': {$ref: 'common.openapi.yaml#/components/responses/Error'}
+components:
+  securitySchemes:
+    ServiceBearer:
+      type: http
+      scheme: bearer
+      description: Gateway service credential, kept server-side. Do not forward the browser's token as service identity.
+  parameters:
+    Actor:
+      in: header
+      name: X-Actor-ID
+      required: true
+      description: Verified administrator subject set by authenticated Gateway; never trust an incoming browser actor header.
+      schema: {type: string, minLength: 1, maxLength: 256}
+    IdempotencyKey:
+      in: header
+      name: Idempotency-Key
+      required: true
+      schema: {type: string, minLength: 1, maxLength: 128}
+  responses:
+    Job:
+      description: Durable job envelope. Same actor/operation/key/content returns the same job for at least 24 hours; changed content is 409.
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [request_id, job]
+            properties:
+              request_id: {type: string}
+              job: {$ref: 'common.openapi.yaml#/components/schemas/Job'}

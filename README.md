@@ -149,6 +149,13 @@ one that makes RAG, versioning and failure handling matter most.
 
 ## Architecture
 
+The approved interface is in [frontend/](frontend/README.md). Its REST integration,
+repository data sources and proposed administrator ingestion flow are documented
+in [the frontend/Gateway integration plan](docs/frontend-gateway-integration.md).
+The [contract inventory](contracts/INTERFACES.md) distinguishes existing APIs from
+proposed endpoints. The Gateway remains a stub; admin authentication and uploads
+are not implemented.
+
 The Source Collector implementation, RabbitMQ demo and relay delivery contract
 are documented in [SOURCE_COLLECTOR.md](SOURCE_COLLECTOR.md).
 

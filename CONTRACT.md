@@ -42,6 +42,10 @@ Status: **Proposed — requires approval from all service owners**. Scope: COMP 
 | Client → Gateway | `docs/gateway-api.md`; `contracts/gateway.openapi.yaml` | Stub implemented, not wired |
 | Gateway → Retrieval | `contracts/INTERFACES.md` | Proposed; owner approval needed |
 | Gateway → Answer | `contracts/INTERFACES.md`; PR #6 `docs/answer-service.md` | Proposed; owner approval needed |
+| Gateway → Retrieval formal schema | `contracts/retrieval.openapi.yaml` | Matches standalone prototype; not wired |
+| Gateway → Answer formal schema | `contracts/answer.openapi.yaml` | Review draft aligned to PR #6 at a73dfa8 |
+| Frontend → Gateway admin/collection | Proposed operations in `contracts/gateway.openapi.yaml` | Not implemented; identity provider undecided |
+| Gateway → ingestion extension | `contracts/ingestion.openapi.yaml` | Scope extension; collector/indexer review required |
 
 ## Enforcement and merge gate
 
