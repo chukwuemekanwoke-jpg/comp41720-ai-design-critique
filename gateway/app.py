@@ -1,147 +1,128 @@
-"""Placeholder gateway API for StudentPath.
-
-This stub fixes the public contract (paths, request id, response shape, status
-vocabulary, error shape, metrics) so the other services and the evaluation
-harness can be written against it. It returns canned data and calls no other
-service. Replace the body of `ask` with real calls to the retrieval API and the
-answer service once those exist; keep the models and paths stable.
-
-Test hooks (stub only): a question containing "[missing]" returns the
-insufficient-evidence shape, and one containing "[degraded]" returns the
-fallback shape.
-"""
-from __future__ import annotations
-
+"""Public REST Gateway: retrieve pinned evidence, then request a grounded answer."""
+import asyncio
 import re
 import time
 import uuid
 from collections import defaultdict
-from typing import Literal
+from contextlib import asynccontextmanager
 
+import httpx
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, PlainTextResponse
-from pydantic import BaseModel, Field
 
-API_VERSION = "v1"
-INDEX_VERSION = "stub-0"
-NOTICE = "Information only. This is not an eligibility decision or legal advice."
+from .client import UpstreamFailure, orchestrate, retrieve
+from .config import Settings
+from .models import AnswerOut, ErrorOut, QuestionIn
+
 REQUEST_ID_RE = re.compile(r"[A-Za-z0-9_-]{1,64}")
 
 
-class QuestionIn(BaseModel):
-    question: str = Field(min_length=3, max_length=500, examples=[
-        "Where are the requirements for moving from Stamp 2 to graduate Stamp 1G?"])
+def create_app(settings=None, *, retrieval_transport=None, answer_transport=None):
+    config = settings if settings is not None else Settings.from_env()
+
+    @asynccontextmanager
+    async def lifespan(application):
+        async with httpx.AsyncClient(
+            base_url=config.retrieval_url.rstrip("/"), timeout=config.retrieval_timeout,
+            transport=retrieval_transport, trust_env=False, follow_redirects=False,
+        ) as retrieval_client, httpx.AsyncClient(
+            base_url=config.answer_url.rstrip("/"), timeout=config.answer_timeout,
+            transport=answer_transport, trust_env=False, follow_redirects=False,
+        ) as answer_client:
+            application.state.retrieval = retrieval_client
+            application.state.answer = answer_client
+            yield
+
+    service = FastAPI(title="StudentPath Gateway", version="0.2.0", lifespan=lifespan)
+    requests = defaultdict(int)
+    duration_sum = defaultdict(float)
+    duration_count = defaultdict(int)
+
+    @service.middleware("http")
+    async def request_context(request: Request, call_next):
+        incoming = request.headers.get("x-request-id", "")
+        request.state.request_id = incoming if REQUEST_ID_RE.fullmatch(incoming) else uuid.uuid4().hex
+        started = time.perf_counter()
+        response = await call_next(request)
+        route = request.scope.get("route")
+        path = route.path if route else "unmatched"
+        requests[(path, response.status_code)] += 1
+        duration_sum[path] += time.perf_counter() - started
+        duration_count[path] += 1
+        response.headers["X-Request-ID"] = request.state.request_id
+        return response
+
+    @service.exception_handler(RequestValidationError)
+    async def invalid_request(request: Request, exc):
+        return JSONResponse(status_code=400, content=ErrorOut(
+            request_id=request.state.request_id, error="invalid_request",
+            message="Send only a question containing 3 to 500 characters."
+        ).model_dump())
+
+    @service.exception_handler(Exception)
+    async def internal_error(request: Request, exc):
+        request_id = getattr(request.state, "request_id", uuid.uuid4().hex)
+        return JSONResponse(status_code=500, headers={"X-Request-ID": request_id}, content=ErrorOut(
+            request_id=request_id, error="internal_error", message="The request could not be completed."
+        ).model_dump())
+
+    @service.post("/v1/questions", response_model=AnswerOut, responses={
+        400: {"model": ErrorOut}, 502: {"model": ErrorOut}, 504: {"model": ErrorOut}})
+    async def ask(payload: QuestionIn, request: Request):
+        try:
+            return await orchestrate(service.state.retrieval, service.state.answer, config,
+                                     request.state.request_id, payload.question)
+        except UpstreamFailure as exc:
+            return JSONResponse(status_code=504 if exc.timed_out else 502, content=ErrorOut(
+                request_id=request.state.request_id,
+                error="upstream_timeout" if exc.timed_out else "upstream_unavailable",
+                message="A downstream deadline expired." if exc.timed_out else "A downstream service is unavailable or returned invalid evidence."
+            ).model_dump())
+
+    @service.get("/healthz")
+    def healthz():
+        return {"status": "ok"}
+
+    @service.get("/readyz")
+    async def readyz():
+        async def retrieval_ready():
+            # Liveness alone does not establish a readable committed index.
+            await retrieve(service.state.retrieval, uuid.uuid4().hex, "readiness probe", config.retrieval_timeout)
+
+        async def answer_ready():
+            async with asyncio.timeout(config.retrieval_timeout):
+                response = await service.state.answer.get("/healthz")
+                if response.status_code != 200 or response.json() != {"status": "ok"}:
+                    raise UpstreamFailure()
+
+        outcomes = await asyncio.gather(retrieval_ready(), answer_ready(), return_exceptions=True)
+        dependencies = {name: "unavailable" if isinstance(outcome, BaseException) else "ready"
+                        for name, outcome in zip(("retrieval_api", "answer_service"), outcomes)}
+        ready = all(value == "ready" for value in dependencies.values())
+        return JSONResponse(status_code=200 if ready else 503,
+                            content={"status": "ready" if ready else "not_ready", "dependencies": dependencies})
+
+    @service.get("/metrics", response_class=PlainTextResponse)
+    def metrics():
+        lines = ["# TYPE gateway_requests_total counter"]
+        for (path, status), count in sorted(requests.items()):
+            lines.append(f'gateway_requests_total{{path="{path}",status="{status}"}} {count}')
+        lines.append("# TYPE gateway_request_duration_seconds summary")
+        for path in sorted(duration_count):
+            lines.append(f'gateway_request_duration_seconds_sum{{path="{path}"}} {duration_sum[path]:.6f}')
+            lines.append(f'gateway_request_duration_seconds_count{{path="{path}"}} {duration_count[path]}')
+        return "\n".join(lines) + "\n"
+
+    # Outermost CORS also decorates safe 500 responses; exact origins only.
+    if config.cors_origins:
+        return CORSMiddleware(
+            service, allow_origins=list(config.cors_origins), allow_credentials=False,
+            allow_methods=["GET", "POST"], allow_headers=["Content-Type", "X-Request-ID"],
+            expose_headers=["X-Request-ID"],
+        )
+    return service
 
 
-class Source(BaseModel):
-    source_id: str
-    snapshot_id: str
-    source_version: int
-    url: str
-    passage: str
-
-
-class ModelInfo(BaseModel):
-    name: str
-    prompt_version: str
-
-
-class AnswerOut(BaseModel):
-    request_id: str
-    status: Literal["answered", "insufficient_evidence", "degraded"]
-    answer: str | None
-    checklist: list[str]
-    sources: list[Source]
-    index_version: str
-    last_success_at: str | None
-    fallback_used: bool
-    model: ModelInfo
-    notice: str
-    stub: bool = True
-
-
-class ErrorOut(BaseModel):
-    request_id: str
-    error: Literal["invalid_request", "upstream_unavailable", "upstream_timeout", "internal_error"]
-    message: str
-
-
-app = FastAPI(title="StudentPath Gateway (placeholder)", version="0.0.1")
-
-_requests: dict[tuple[str, int], int] = defaultdict(int)
-_duration_sum: dict[str, float] = defaultdict(float)
-_duration_count: dict[str, int] = defaultdict(int)
-
-
-@app.middleware("http")
-async def request_context(request: Request, call_next):
-    incoming = request.headers.get("x-request-id", "")
-    request.state.request_id = incoming if REQUEST_ID_RE.fullmatch(incoming) else uuid.uuid4().hex
-    started = time.perf_counter()
-    response = await call_next(request)
-    route = request.scope.get("route")
-    path = route.path if route else "unmatched"
-    _requests[(path, response.status_code)] += 1
-    _duration_sum[path] += time.perf_counter() - started
-    _duration_count[path] += 1
-    response.headers["X-Request-ID"] = request.state.request_id
-    return response
-
-
-@app.exception_handler(RequestValidationError)
-async def invalid_request(request: Request, exc: RequestValidationError):
-    body = ErrorOut(request_id=request.state.request_id, error="invalid_request",
-                    message="Send a JSON body with a question of 3 to 500 characters.")
-    return JSONResponse(status_code=400, content=body.model_dump())
-
-
-@app.post(f"/{API_VERSION}/questions", response_model=AnswerOut,
-          responses={400: {"model": ErrorOut}, 502: {"model": ErrorOut}, 504: {"model": ErrorOut}})
-def ask(payload: QuestionIn, request: Request) -> AnswerOut:
-    request_id = request.state.request_id
-    question = payload.question
-    model = ModelInfo(name="stub-model", prompt_version="stub-0")
-    if "[missing]" in question:
-        return AnswerOut(request_id=request_id, status="insufficient_evidence", answer=None,
-                         checklist=[], sources=[], index_version=INDEX_VERSION,
-                         last_success_at=None, fallback_used=False, model=model, notice=NOTICE)
-    degraded = "[degraded]" in question
-    source = Source(source_id="S000", snapshot_id="S000:stub", source_version=1,
-                    url="https://www.irishimmigration.ie/",
-                    passage="[stub] Placeholder passage. Not real guidance.")
-    return AnswerOut(
-        request_id=request_id,
-        status="degraded" if degraded else "answered",
-        answer=None if degraded else "[stub] Placeholder answer. The retrieval and answer services are not connected yet.",
-        checklist=["[stub] Placeholder checklist item"],
-        sources=[source],
-        index_version=INDEX_VERSION,
-        last_success_at="2026-01-01T00:00:00+00:00",
-        fallback_used=degraded,
-        model=ModelInfo(name="local-fallback", prompt_version="stub-0") if degraded else model,
-        notice=NOTICE,
-    )
-
-
-@app.get("/healthz")
-def healthz() -> dict:
-    return {"status": "ok"}
-
-
-@app.get("/readyz")
-def readyz() -> dict:
-    # Placeholder: report real dependency checks (retrieval API, answer service) here.
-    return {"status": "ready", "dependencies": {"retrieval_api": "not_connected", "answer_service": "not_connected"}}
-
-
-@app.get("/metrics", response_class=PlainTextResponse)
-def metrics() -> str:
-    lines = ["# TYPE gateway_requests_total counter"]
-    for (path, status), count in sorted(_requests.items()):
-        lines.append(f'gateway_requests_total{{path="{path}",status="{status}"}} {count}')
-    lines.append("# TYPE gateway_request_duration_seconds summary")
-    for path in sorted(_duration_count):
-        lines.append(f'gateway_request_duration_seconds_sum{{path="{path}"}} {_duration_sum[path]:.6f}')
-        lines.append(f'gateway_request_duration_seconds_count{{path="{path}"}} {_duration_count[path]}')
-    return "\n".join(lines) + "\n"
+app = create_app()

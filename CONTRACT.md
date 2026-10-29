@@ -39,10 +39,10 @@ Status: **Proposed — requires approval from all service owners**. Scope: COMP 
 |---|---|---|
 | Collector → RabbitMQ → Indexer | `docs/collector-indexer-handoff.md`; `contracts/events/document-updated.schema.json` | Event confirmed; consumer adapter pending |
 | Indexer → Collector snapshot API | `docs/collector-snapshot-api.md`; `contracts/collector.openapi.yaml` | Implemented and HTTP compatibility checked |
-| Client → Gateway | `docs/gateway-api.md`; `contracts/gateway.openapi.yaml` | Stub implemented, not wired |
+| Client → Gateway | `docs/gateway-api.md`; `contracts/gateway.openapi.yaml` | REST orchestration implemented; synthetic integration checks |
 | Gateway → Retrieval | `contracts/INTERFACES.md` | Proposed; owner approval needed |
 | Gateway → Answer | `contracts/INTERFACES.md`; PR #6 `docs/answer-service.md` | Proposed; owner approval needed |
-| Gateway → Retrieval formal schema | `contracts/retrieval.openapi.yaml` | Matches standalone prototype; not wired |
+| Gateway → Retrieval formal schema | `contracts/retrieval.openapi.yaml` | Matches prototype; Gateway HTTP mapping implemented |
 | Gateway → Answer formal schema | `contracts/answer.openapi.yaml` | Review draft aligned to PR #6 at a73dfa8 |
 | Frontend → Gateway admin/collection | Proposed operations in `contracts/gateway.openapi.yaml` | Not implemented; identity provider undecided |
 | Gateway → ingestion extension | `contracts/ingestion.openapi.yaml` | Scope extension; collector/indexer review required |

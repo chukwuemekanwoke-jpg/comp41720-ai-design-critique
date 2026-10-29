@@ -1,13 +1,13 @@
 openapi: 3.0.3
 info:
   title: StudentPath Gateway API
-  version: 1.1.0
-  description: Questions/health/metrics are existing stub interfaces. All x-implementation proposed operations require backend work; this file does not enable authentication or uploads.
+  version: 1.2.0
+  description: Questions use REST Retrieval and Answer orchestration. All x-implementation proposed operations require backend work; this file does not enable authentication or uploads.
 paths:
   /v1/questions:
     post:
       operationId: askQuestion
-      x-implementation: stub
+      x-implementation: implemented
       parameters:
         - in: header
           name: X-Request-ID
@@ -18,6 +18,7 @@ paths:
           application/json:
             schema:
               type: object
+              additionalProperties: false
               required: [question]
               properties:
                 question: {type: string, minLength: 3, maxLength: 500}
@@ -55,7 +56,6 @@ paths:
                       name: {type: string}
                       prompt_version: {type: string}
                   notice: {type: string}
-                  stub: {type: boolean, description: Present only in placeholder implementation}
         '400': {$ref: 'common.openapi.yaml#/components/responses/Error'}
         '502': {$ref: 'common.openapi.yaml#/components/responses/Error'}
         '504': {$ref: 'common.openapi.yaml#/components/responses/Error'}
@@ -193,7 +193,8 @@ paths:
   /readyz:
     get:
       responses:
-        '200': {description: Readiness}
+        '200': {description: Readable committed index and live Answer service; does not guarantee model availability.}
+        '503': {description: Not ready; status and dependencies identify unavailable services.}
   /metrics:
     get:
       responses:

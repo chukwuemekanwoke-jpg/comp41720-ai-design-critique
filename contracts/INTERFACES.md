@@ -5,9 +5,9 @@ remains the asynchronous update path. The browser connects only to the Gateway.
 
 | Boundary | Specification | Implementation state |
 |---|---|---|
-| Frontend → Gateway questions | [Gateway](gateway.openapi.yaml) | Existing canned-response stub; no downstream calls |
+| Frontend → Gateway questions | [Gateway](gateway.openapi.yaml) | REST orchestration implemented; frontend supports configured Gateway origin |
 | Gateway → Retrieval | [Retrieval](retrieval.openapi.yaml) | Matches local prototype; storage adapter pending |
-| Gateway → Answer | [Answer](answer.openapi.yaml) | Aligned to PR #6 at `a73dfa8046a39b2cca7af4dc966256f43d7cded2`; not merged/integrated here |
+| Gateway → Answer | [Answer](answer.openapi.yaml) | PR #6 merged; Gateway mapping implemented and tested against actual ASGI API |
 | Indexer → Collector | [Collector](collector.openapi.yaml) | Existing snapshot API; unchanged |
 | Gateway → ingestion extension | [Ingestion](ingestion.openapi.yaml) | Proposal; collector/indexer owner approval required |
 | Frontend → admin/collection endpoints | Gateway operations marked `x-implementation: proposed` | No authentication, upload or status backend yet |

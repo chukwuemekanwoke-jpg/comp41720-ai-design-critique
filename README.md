@@ -153,8 +153,8 @@ The approved interface is in [frontend/](frontend/README.md). Its REST integrati
 repository data sources and proposed administrator ingestion flow are documented
 in [the frontend/Gateway integration plan](docs/frontend-gateway-integration.md).
 The [contract inventory](contracts/INTERFACES.md) distinguishes existing APIs from
-proposed endpoints. The Gateway remains a stub; admin authentication and uploads
-are not implemented.
+proposed endpoints. The Gateway now calls Retrieval and Answer over REST; admin
+authentication and uploads are not implemented. See [Gateway run instructions](docs/gateway-api.md).
 
 The Source Collector implementation, RabbitMQ demo and relay delivery contract
 are documented in [SOURCE_COLLECTOR.md](SOURCE_COLLECTOR.md).

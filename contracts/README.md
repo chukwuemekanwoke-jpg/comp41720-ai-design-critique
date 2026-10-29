@@ -6,7 +6,7 @@ Keep the files together: relative references use `common.openapi.yaml`.
 
 | Document | Purpose |
 |---|---|
-| `gateway.openapi.yaml` | Existing public question stub and proposed admin/collection operations |
+| `gateway.openapi.yaml` | Public REST orchestration and proposed admin/collection operations |
 | `retrieval.openapi.yaml` | Current standalone retrieval HTTP interface |
 | `answer.openapi.yaml` | PR #6 alignment draft; Jordan's review required |
 | `collector.openapi.yaml` | Existing snapshot HTTP API, unchanged |
@@ -23,8 +23,8 @@ python scripts/validate_contracts.py
 Validation checks specification structure and references. Runtime cross-field
 rules, authorisation, freshness consistency and citation integrity need separate
 integration tests before endpoints can be enabled. `x-implementation: proposed`
-does not mean a route is implemented. The existing Gateway still returns canned
-data. Generic error envelopes use `request_id`, `error`, `message`; the existing
+does not mean a route is implemented. The public question route calls Retrieval
+and Answer. Generic error envelopes use `request_id`, `error`, `message`; the existing
 collector snapshot errors continue to use FastAPI's `detail` shape.
 
 Proposed Gateway error codes: 400 `invalid_request`, 401 `unauthenticated`,
