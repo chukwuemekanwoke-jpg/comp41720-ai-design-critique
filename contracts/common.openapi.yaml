@@ -1,0 +1,102 @@
+openapi: 3.0.3
+info: {title: StudentPath shared HTTP schemas, version: 1.1.0}
+paths: {}
+components:
+  parameters:
+    RequestId:
+      in: header
+      name: X-Request-ID
+      description: Gateway validates or assigns this ID and propagates it downstream.
+      schema: {type: string, pattern: '^[A-Za-z0-9_-]{1,64}$'}
+  headers:
+    RequestId:
+      description: Matches request_id in the JSON response.
+      schema: {type: string, pattern: '^[A-Za-z0-9_-]{1,64}$'}
+  schemas:
+    Error:
+      type: object
+      required: [request_id, error, message]
+      properties:
+        request_id: {type: string}
+        error: {type: string}
+        message: {type: string}
+    Source:
+      type: object
+      additionalProperties: false
+      required: [source_id, snapshot_id, source_version, url, passage]
+      properties:
+        source_id: {type: string, minLength: 1, maxLength: 256}
+        snapshot_id: {type: string, minLength: 1, maxLength: 256}
+        source_version: {type: integer, minimum: 1}
+        url: {type: string, format: uri, maxLength: 2048, description: Canonical HTTP(S) URL; never supplied by the model.}
+        passage: {type: string, minLength: 1, maxLength: 4000}
+    ModelInfo:
+      type: object
+      additionalProperties: false
+      required: [name, prompt_version]
+      properties:
+        name: {type: string}
+        prompt_version: {type: string}
+    Answer:
+      type: object
+      required: [request_id, status, answer, checklist, sources, index_version, last_success_at, fallback_used, model, notice]
+      description: >-
+        answered requires a nonblank answer and supplied citations.
+        insufficient_evidence requires null answer, empty sources/checklist and fallback_used=false.
+        degraded requires null answer, retained evidence, empty checklist and fallback_used=true.
+        Nonempty evidence requires a timezone-aware last_success_at.
+        Enforce these cross-field rules at runtime in addition to schema validation.
+      properties:
+        request_id: {type: string}
+        status: {type: string, enum: [answered, insufficient_evidence, degraded]}
+        answer: {type: string, nullable: true}
+        checklist: {type: array, items: {type: string}}
+        sources:
+          type: array
+          items: {$ref: '#/components/schemas/Source'}
+        index_version: {type: string}
+        last_success_at: {type: string, format: date-time, nullable: true}
+        fallback_used: {type: boolean}
+        model: {$ref: '#/components/schemas/ModelInfo'}
+        notice: {type: string}
+        stub: {type: boolean, description: Present only in the existing placeholder Gateway; frontend must label it.}
+    Job:
+      type: object
+      additionalProperties: false
+      required: [job_id, policy_id, status, submitted_at, updated_at, source_id, snapshot_id, index_version, failure]
+      properties:
+        job_id: {type: string}
+        policy_id: {type: string}
+        status: {type: string, enum: [pending_review, queued, processing, indexed, failed, rejected]}
+        submitted_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+        source_id: {type: string, nullable: true}
+        snapshot_id: {type: string, nullable: true}
+        index_version: {type: string, nullable: true, description: Set only after committed index activation.}
+        failure:
+          type: object
+          nullable: true
+          required: [code, message, retryable]
+          properties:
+            code: {type: string}
+            message: {type: string, description: Sanitised message without stack traces.}
+            retryable: {type: boolean}
+    Upload:
+      type: object
+      required: [file, title, source_url]
+      properties:
+        file:
+          type: string
+          format: binary
+          description: Nonempty PDF, UTF-8 TXT or HTML; maximum 10 MiB. Validate bytes and extraction server-side.
+        title: {type: string, minLength: 1, maxLength: 150}
+        source_url: {type: string, format: uri, description: HTTPS irishimmigration.ie or subdomain; authenticity requires review.}
+        effective_date: {type: string, format: date, description: Optional; not collection freshness.}
+  responses:
+    Error:
+      description: Error code and safe message; request ID retained.
+      headers:
+        X-Request-ID: {$ref: '#/components/headers/RequestId'}
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Error'}

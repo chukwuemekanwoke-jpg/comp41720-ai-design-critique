@@ -1,0 +1,1 @@
+"""StudentPath retrieval service."""

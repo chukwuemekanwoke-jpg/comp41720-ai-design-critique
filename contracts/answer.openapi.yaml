@@ -1,0 +1,47 @@
+openapi: 3.0.3
+info:
+  title: StudentPath Answer Service alignment contract
+  version: 0.2.0
+  description: >-
+    Review draft aligned to PR 6 commit a73dfa8046a39b2cca7af4dc966256f43d7cded2.
+    Not merged or integrated in this checkout. Jordan's approval remains required.
+paths:
+  /v1/answers:
+    post:
+      operationId: answerFromEvidence
+      description: >-
+        X-Request-ID carries tracing. No request_id body field, passage_id or score
+        is accepted. Evidence text must be preserved. Freshness is mandatory when
+        sources are nonempty. Sources/versions must contain non-whitespace text.
+      parameters:
+        - {$ref: 'common.openapi.yaml#/components/parameters/RequestId'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [question, sources, index_version]
+              properties:
+                question: {type: string, minLength: 3, maxLength: 500}
+                sources:
+                  type: array
+                  maxItems: 10
+                  items: {$ref: 'common.openapi.yaml#/components/schemas/Source'}
+                index_version: {type: string, minLength: 1, maxLength: 256}
+                last_success_at: {type: string, format: date-time, nullable: true, maxLength: 64}
+      responses:
+        '200':
+          description: Answer, model refusal, or evidence-only fallback. Model failure is degraded, not an HTTP transport error.
+          headers:
+            X-Request-ID: {$ref: 'common.openapi.yaml#/components/headers/RequestId'}
+          content:
+            application/json:
+              schema: {$ref: 'common.openapi.yaml#/components/schemas/Answer'}
+        '400': {$ref: 'common.openapi.yaml#/components/responses/Error'}
+  /healthz:
+    get:
+      operationId: answerHealth
+      responses:
+        '200': {description: Process liveness.}

@@ -3,6 +3,13 @@
 Draft service split for the COMP 41720 Option B brief. Owners are not yet
 assigned and the fifth service is a proposal for the group to confirm.
 
+The reviewed frontend/Gateway extension and repository data-source map are in
+[frontend-gateway-integration.md](frontend-gateway-integration.md). The Gateway
+is the browser's only backend entry point. REST contracts, proposed admin
+ingestion and the implementation-state inventory are in
+[contracts/INTERFACES.md](../contracts/INTERFACES.md). These documents do not
+claim that downstream services or admin uploads are already connected.
+
 ## Services and ADRs
 
 | # | Service | Owner | Candidate ADR (one page) |

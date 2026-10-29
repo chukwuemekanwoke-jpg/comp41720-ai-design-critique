@@ -1,0 +1,71 @@
+openapi: 3.0.3
+info:
+  title: StudentPath Retrieval API
+  version: 0.1.0
+  description: Matches retrieval_api/app.py. Storage integration and team approval remain pending.
+paths:
+  /v1/retrieve:
+    post:
+      operationId: retrievePassages
+      parameters:
+        - {$ref: 'common.openapi.yaml#/components/parameters/RequestId'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [request_id, question]
+              properties:
+                request_id: {type: string, pattern: '^[A-Za-z0-9_-]{1,64}$'}
+                question: {type: string, minLength: 3, maxLength: 500}
+                top_k: {type: integer, minimum: 1, maximum: 20, default: 5}
+                index_version: {type: string, nullable: true, minLength: 1, maxLength: 128}
+      responses:
+        '200':
+          description: One pinned generation; empty passages are a successful no-match result. Body request_id takes precedence over header.
+          headers:
+            X-Request-ID: {$ref: 'common.openapi.yaml#/components/headers/RequestId'}
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [request_id, index_version, last_success_at, passages]
+                properties:
+                  request_id: {type: string}
+                  index_version: {type: string}
+                  last_success_at: {type: string, format: date-time}
+                  passages:
+                    type: array
+                    items:
+                      type: object
+                      required: [passage_id, source_id, snapshot_id, source_version, url, text, score]
+                      properties:
+                        passage_id: {type: string}
+                        source_id: {type: string}
+                        snapshot_id: {type: string}
+                        source_version: {type: integer}
+                        url: {type: string}
+                        text: {type: string}
+                        score: {type: number, minimum: 0, maximum: 1, description: Lexical query coverage; not confidence.}
+        '400':
+          description: invalid_request
+          content:
+            application/json:
+              schema: {$ref: 'common.openapi.yaml#/components/schemas/Error'}
+        '404':
+          description: index_version_not_found; no fallback to active version.
+          content:
+            application/json:
+              schema: {$ref: 'common.openapi.yaml#/components/schemas/Error'}
+        '503':
+          description: index_unavailable; no readable committed index or repository failure.
+          content:
+            application/json:
+              schema: {$ref: 'common.openapi.yaml#/components/schemas/Error'}
+  /healthz:
+    get:
+      operationId: retrievalHealth
+      responses:
+        '200': {description: Process liveness only; not index readiness.}

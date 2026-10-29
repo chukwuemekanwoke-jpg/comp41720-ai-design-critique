@@ -1,26 +1,51 @@
-# Proposed synchronous service contracts
+# HTTP interface inventory and Gateway alignment
 
-Status: **proposal for team review**, not implemented or approved. Keep these distinct from the existing Gateway public stub and PR #6 Answer Service implementation.
+Status: **team review draft**. REST/JSON is the synchronous transport; RabbitMQ
+remains the asynchronous update path. The browser connects only to the Gateway.
 
-## Gateway → Retrieval API (proposed)
+| Boundary | Specification | Implementation state |
+|---|---|---|
+| Frontend → Gateway questions | [Gateway](gateway.openapi.yaml) | Existing canned-response stub; no downstream calls |
+| Gateway → Retrieval | [Retrieval](retrieval.openapi.yaml) | Matches local prototype; storage adapter pending |
+| Gateway → Answer | [Answer](answer.openapi.yaml) | Aligned to PR #6 at `a73dfa8046a39b2cca7af4dc966256f43d7cded2`; not merged/integrated here |
+| Indexer → Collector | [Collector](collector.openapi.yaml) | Existing snapshot API; unchanged |
+| Gateway → ingestion extension | [Ingestion](ingestion.openapi.yaml) | Proposal; collector/indexer owner approval required |
+| Frontend → admin/collection endpoints | Gateway operations marked `x-implementation: proposed` | No authentication, upload or status backend yet |
+| Collector → RabbitMQ → Indexer | [Event schema](events/document-updated.schema.json) | Existing eight-field payload unchanged |
 
-`POST /v1/retrieve`
+## Gateway mapping to Answer
 
-Request: `{"request_id":"abc123","question":"Stamp 1G requirements?","top_k":5,"index_version":null}`
+The previous prose proposal did not match Jordan's implemented request. PR #6
+uses `POST /v1/answers`, `sources` rather than `passages`, and `X-Request-ID`
+rather than a body request ID.
 
-Response: `{"request_id":"abc123","index_version":"idx-001","last_success_at":"2026-10-27T12:00:00Z","passages":[{"passage_id":"p-1","source_id":"S001","snapshot_id":"S001:<sha256>","source_version":1,"url":"https://www.irishimmigration.ie/...","text":"...","score":0.83}]}`
+| Retrieval response | Answer request | Gateway obligation |
+|---|---|---|
+| `passages[].text` | `sources[].passage` | Rename only; preserve text |
+| Source/snapshot IDs, source version, URL | Same fields on each source | Preserve canonical provenance |
+| `passage_id`, `score` | Not accepted | Keep in request-local mapping; omit from Answer body |
+| `index_version` | `index_version` | Pin once; do not retrieve again to refresh the answer |
+| `last_success_at` | `last_success_at` | Preserve timezone-aware timestamp |
+| `request_id` | `X-Request-ID` | Propagate the same ID |
 
-Rules: pin a single committed index version per request; preserve official source provenance; empty passages are valid; no guessed evidence. Define version-not-found and unavailable-index error responses before integration.
+Default `top_k=5` fits Answer's maximum of 10 sources. Answer limits evidence to
+4,000 characters per passage and 256-character identifiers. Retrieval currently
+does not enforce all these bounds. Detect incompatible evidence before calling
+Answer; do not silently truncate it. Agree indexer chunk limits with Kezhen.
 
-## Gateway → Answer Service (alignment proposal)
+Answer returns the public envelope without `stub` and cites a subset of supplied
+source objects, not passage IDs. Gateway must verify request ID, index version,
+freshness and complete source objects against the pinned request-local evidence.
+Preserve `insufficient_evidence` refusals. Citation membership does not prove
+semantic support for every generated claim.
 
-Gateway forwards `request_id`, `question`, the retrieved passages with full source metadata, `index_version`, and `last_success_at`. The Answer Service returns a status from `answered|insufficient_evidence|degraded`, answer or null, checklist, and citations restricted to supplied passage identifiers. Gateway attaches canonical official URLs and the public response envelope.
+## Decisions required before wiring
 
-**Do not implement this proposal without comparing against PR #6 `docs/answer-service.md` and obtaining Jordan's sign-off.** Decide citation identifiers, field names, model metadata, deadline, and error mapping together. The Answer Service must never invent citations.
+- Jordan: confirm mapping, duplicate source treatment, generation budget and
+  failure policy. The PR's default generation deadline is 20 seconds.
+- Kezhen: agree chunk limits, index schema, activation and job completion.
+- Sunmin: approve upload/review extension, authenticity review and storage.
+- Gateway owner: implement identity checks, CORS, orchestration and validation.
 
-## Open decisions
-
-- Canonical passage ID format and score interpretation.
-- Gateway→Retrieval and Gateway→Answer HTTP paths and exact Pydantic field mapping.
-- Timeout budgets, upstream errors, retries, and whether retrieval returns freshness per source.
-- Version-not-found handling and index-activation atomicity.
+Do not change another owner's service to force compatibility. See the
+[integration plan](../docs/frontend-gateway-integration.md) for acceptance checks.
