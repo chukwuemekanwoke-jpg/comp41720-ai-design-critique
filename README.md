@@ -149,6 +149,9 @@ one that makes RAG, versioning and failure handling matter most.
 
 ## Architecture
 
+Branching, mandatory review, automated checks and the deployment boundary are
+documented in [the development workflow](docs/development-workflow.md).
+
 The approved interface is in [frontend/](frontend/README.md). Its REST integration,
 repository data sources and proposed administrator ingestion flow are documented
 in [the frontend/Gateway integration plan](docs/frontend-gateway-integration.md).
