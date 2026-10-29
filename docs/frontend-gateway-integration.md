@@ -1,7 +1,7 @@
 # Frontend and Gateway integration plan
 
-Owner: Chukwuemeka Nwoke. Status: review-ready contracts and frontend source;
-backend orchestration and administration remain unimplemented.
+Owner: Chukwuemeka Nwoke. Status: Gateway REST orchestration implemented and tested;
+administrator authentication/ingestion and real index storage remain separate work.
 
 ## Architecture
 
@@ -11,7 +11,7 @@ flowchart TB
   UI -->|Sign in| ID[Identity provider: to be selected]
   G -->|Verify admin identity| ID
   G -->|POST /v1/retrieve| R[Retrieval]
-  G -->|POST /v1/answers: pinned evidence| A[Answer: PR 6]
+  G -->|POST /v1/answers: pinned evidence| A[Answer: merged PR 6]
   A --> M[Ollama or evidence-only fallback]
   G -->|Proposed policy/review/job operations| C[Collector + ingestion extension]
   S[Selected official ISD pages] --> C
@@ -70,9 +70,8 @@ Budget proposal: Gateway total 30 seconds, Retrieval up to 3 seconds, Answer up
 to 23 seconds, reserving validation/transport overhead. Answer's current model
 timeout defaults to 20 seconds. Clamp downstream deadlines to the remaining
 total budget and use an actual end-to-end deadline, not only socket timeouts.
-Raise the frontend's current 20-second abort to 35 seconds when wiring this
-budget; otherwise the browser can abandon valid responses. No automatic retry
-for generation. Confirm budgets with Jordan before implementation.
+The repository frontend uses a 35-second abort for this budget. No automatic
+generation retry is performed. Confirm any changes to the model deadline with Jordan.
 
 ## Administration extension (proposal)
 
@@ -124,9 +123,9 @@ Do not proxy arbitrary user-specified URLs or log raw tokens/personal documents.
 ## Delivery checklist
 
 - Frontend source copied into `frontend/`; no Site Git metadata or hosting identity.
-- Gateway public stub preserved; proposed routes are not claimed as implemented.
+- Gateway public question flow now orchestrates REST; proposed admin routes remain unimplemented.
 - OpenAPI documents validate and relative references resolve.
-- Next: implement Gateway REST clients after downstream-owner agreement.
+- Gateway REST clients preserve evidence and validate the merged Answer contract.
 - Test successful answers, model refusal/fallback, no matches, missing index,
   malformed upstream payloads, forged citations and version mismatch.
 - Test CORS, request-ID propagation and browser/Gateway deadline alignment.

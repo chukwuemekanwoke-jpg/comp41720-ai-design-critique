@@ -4,7 +4,8 @@ info:
   version: 0.2.0
   description: >-
     Review draft aligned to PR 6 commit a73dfa8046a39b2cca7af4dc966256f43d7cded2.
-    Not merged or integrated in this checkout. Jordan's approval remains required.
+    PR 6 is merged. Gateway REST mapping is implemented against this boundary;
+    future contract changes still require Jordan's review.
 paths:
   /v1/answers:
     post:

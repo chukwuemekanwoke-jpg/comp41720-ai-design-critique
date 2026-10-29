@@ -21,8 +21,9 @@ python -m http.server 8080 --directory frontend/dist
 Open http://localhost:8080. In the connection menu, enter the REST gateway base
 URL. Questions are posted to `/v1/questions` using the existing gateway contract.
 Configure the gateway's CORS allowlist for the exact frontend origin. The gateway
-in the project repository is currently a canned-response stub, not a complete
-RAG pipeline. Stub responses are labelled in the UI.
+now calls Retrieval and Answer over REST. See [Gateway run instructions](../docs/gateway-api.md)
+for a three-service synthetic demo. Real indexed policy storage remains separate
+work. Legacy stub responses are still labelled defensively in the UI.
 
 ## Admin scope
 
