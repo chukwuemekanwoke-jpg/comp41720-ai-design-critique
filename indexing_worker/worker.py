@@ -8,7 +8,10 @@ from indexing_worker.models import (
     DocumentUpdateEvent,
     SnapshotResponse,
 )
-from indexing_worker.store import IndexerStore
+from indexing_worker.store import (
+    IndexerStore,
+    StaleIndexCandidateError,
+)
 
 
 class SnapshotClient(Protocol):
@@ -58,14 +61,23 @@ class IndexingWorker:
         snapshot_client: SnapshotClient,
         index_builder: IndexBuilder,
         max_attempts: int = 3,
+        max_publication_attempts: int = 3,
     ) -> None:
         if max_attempts <= 0:
             raise ValueError("max_attempts must be positive")
+
+        if max_publication_attempts <= 0:
+            raise ValueError(
+                "max_publication_attempts must be positive"
+            )
 
         self.store = store
         self.snapshot_client = snapshot_client
         self.index_builder = index_builder
         self.max_attempts = max_attempts
+        self.max_publication_attempts = (
+            max_publication_attempts
+        )
 
     def process(
         self,
@@ -116,36 +128,61 @@ class IndexingWorker:
                 event.snapshot_id
             )
             snapshot.verify_against(event)
-
-            index_version = self.index_builder.build_index(
-                event,
-                snapshot,
-            )
-
-            activated = self.store.activate(
-                event,
-                index_version=index_version,
-            )
-
-            if not activated:
-                current = self.store.get_active_source(
-                    event.source_id
+            for publication_attempt in range(
+                self.max_publication_attempts
+            ):
+                index_version = self.index_builder.build_index(
+                    event,
+                    snapshot,
                 )
+
+                try:
+                    activated = self.store.activate(
+                        event,
+                        index_version=index_version,
+                    )
+                except StaleIndexCandidateError:
+                    discarded = self.store.discard_index_version(
+                        index_version
+                    )
+
+                    if not discarded:
+                        raise RuntimeError(
+                            "stale index candidate could not "
+                            "be discarded"
+                        )
+
+                    if (
+                        publication_attempt + 1
+                        >= self.max_publication_attempts
+                    ):
+                        raise
+
+                    continue
+
+                if not activated:
+                    current = self.store.get_active_source(
+                        event.source_id
+                    )
+
+                    return ProcessingResult(
+                        event_id=event.event_id,
+                        action=ProcessingAction.ACK_OBSOLETE,
+                        index_version=(
+                            current.index_version
+                            if current is not None
+                            else None
+                        ),
+                    )
 
                 return ProcessingResult(
                     event_id=event.event_id,
-                    action=ProcessingAction.ACK_OBSOLETE,
-                    index_version=(
-                        current.index_version
-                        if current is not None
-                        else None
-                    ),
+                    action=ProcessingAction.ACK_COMPLETED,
+                    index_version=index_version,
                 )
 
-            return ProcessingResult(
-                event_id=event.event_id,
-                action=ProcessingAction.ACK_COMPLETED,
-                index_version=index_version,
+            raise RuntimeError(
+                "publication attempts exhausted"
             )
 
         except Exception as error:

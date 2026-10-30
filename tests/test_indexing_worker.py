@@ -892,7 +892,7 @@ def test_stale_candidate_cannot_replace_newer_current_index(
         ) is not None
 
 
-def test_worker_retries_stale_candidate_and_preserves_sources(
+def test_worker_rebuilds_stale_candidate_without_broker_retry(
     tmp_path,
 ) -> None:
     text_s001 = "Information from source one"
@@ -924,6 +924,7 @@ def test_worker_retries_stale_candidate_and_preserves_sources(
         class InterleavingIndexBuilder:
             def __init__(self) -> None:
                 self.has_activated_s001 = False
+                self.candidates: list[int] = []
 
             def build_index(
                 self,
@@ -934,7 +935,7 @@ def test_worker_retries_stale_candidate_and_preserves_sources(
                     event,
                     snapshot,
                 )
-
+                self.candidates.append(candidate)
                 # During the first S002 build, another worker activates
                 # S001, making the S002 candidate stale.
                 if not self.has_activated_s001:
@@ -946,29 +947,36 @@ def test_worker_retries_stale_candidate_and_preserves_sources(
 
                 return candidate
 
+        builder = InterleavingIndexBuilder()
+
         worker = IndexingWorker(
             store=store,
             snapshot_client=FakeSnapshotClient(
                 make_snapshot(event_s002, text_s002)
             ),
-            index_builder=InterleavingIndexBuilder(),
+            index_builder=builder,
             max_attempts=3,
         )
 
-        first_result = worker.process(event_s002)
-
-        assert first_result.action == ProcessingAction.RETRY
-        assert (
-            store.get_current_index_version()
-            == index_s001
-        )
-
-        second_result = worker.process(event_s002)
+        result = worker.process(event_s002)
 
         assert (
-            second_result.action
+            result.action
             == ProcessingAction.ACK_COMPLETED
         )
+        assert len(builder.candidates) == 2
+        assert store.get_index_status(
+            builder.candidates[0]
+        ) == "discarded"
+        assert store.get_index_status(
+            builder.candidates[1]
+        ) == "active"
+
+        event_record = store.get_event(
+            event_s002.event_id
+        )
+        assert event_record is not None
+        assert event_record.attempt_count == 1
 
         current_index = store.get_current_index_version()
         assert current_index is not None

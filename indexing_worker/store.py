@@ -26,6 +26,10 @@ class ActiveSource:
     index_version: int
 
 
+class StaleIndexCandidateError(ValueError):
+    """The current index changed while a candidate was being built."""
+
+
 class IndexerStore:
     """Durable SQLite state owned by the Indexing Worker."""
 
@@ -393,7 +397,7 @@ class IndexerStore:
                     candidate["base_index_version"]
                     != current_index_version
                 ):
-                    raise ValueError(
+                    raise StaleIndexCandidateError(
                         "stale index candidate: current index changed "
                         "after the candidate was built"
                     )
@@ -784,6 +788,26 @@ class IndexerStore:
             )
 
         return index_version
+
+    def discard_index_version(
+        self,
+        index_version: int,
+    ) -> bool:
+        """Hide an unpublished candidate that can no longer be activated."""
+
+        with self.transaction():
+            cursor = self.connection.execute(
+                """
+                UPDATE index_versions
+                SET status = 'discarded'
+                WHERE
+                    index_version = ?
+                    AND status IN ('building', 'ready')
+                """,
+                (index_version,),
+            )
+
+        return cursor.rowcount == 1
 
     def get_index_status(
         self,
