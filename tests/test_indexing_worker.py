@@ -1,4 +1,5 @@
 import hashlib
+import sqlite3
 
 import pytest
 
@@ -8,7 +9,10 @@ from indexing_worker.models import (
     DocumentUpdateEvent,
     SnapshotResponse,
 )
-from indexing_worker.store import IndexerStore
+from indexing_worker.store import (
+    IndexerStore,
+    StaleIndexCandidateError,
+)
 
 from indexing_worker.worker import (
     IndexingWorker,
@@ -525,6 +529,45 @@ def test_chunker_is_deterministic() -> None:
     )
 
 
+def test_chunker_enforces_answer_character_limit() -> None:
+    chunker = DeterministicChunker(
+        max_words=10,
+        overlap_words=1,
+        max_chars=9,
+    )
+
+    passages = chunker.chunk(
+        snapshot_id="S001:snapshot-a",
+        clean_text="aaaa bbbb cccc",
+    )
+
+    assert [passage.text for passage in passages] == [
+        "aaaa bbbb",
+        "bbbb cccc",
+    ]
+    assert all(
+        len(passage.text) <= chunker.max_chars
+        for passage in passages
+    )
+
+
+def test_chunker_rejects_word_over_character_limit() -> None:
+    chunker = DeterministicChunker(
+        max_words=10,
+        overlap_words=1,
+        max_chars=4,
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="single word exceeds max_chars",
+    ):
+        chunker.chunk(
+            snapshot_id="S001:snapshot-a",
+            clean_text="abcde",
+        )
+
+
 def test_content_reversion_reuses_passage_ids() -> None:
     chunker = DeterministicChunker(
         max_words=3,
@@ -579,7 +622,7 @@ def test_store_persists_passages(
 
         stored = store.get_passages(
             snapshot_id="S001:snapshot-a",
-            chunker_version="word-window-v1",
+            chunker_version=chunker.version,
         )
 
         assert stored == passages
@@ -685,6 +728,8 @@ def test_create_ready_index_manifest(
         assert indexed_source is not None
         assert indexed_source.source_version == 1
         assert indexed_source.snapshot_id == event.snapshot_id
+        assert indexed_source.source_url == event.source_url
+        assert indexed_source.checked_at == event.checked_at
 
         assert store.get_index_passage_ids(
             index_version=1,
@@ -693,6 +738,124 @@ def test_create_ready_index_manifest(
             passage.passage_id
             for passage in passages
         ]
+
+
+def test_published_views_hide_partial_and_retain_old_generations(
+    tmp_path,
+) -> None:
+    database_path = tmp_path / "indexer.sqlite3"
+    chunker = DeterministicChunker()
+
+    event_v1 = make_event(
+        clean_text="first published content",
+        source_version=1,
+    )
+    event_v2 = make_event(
+        clean_text="second published content",
+        source_version=2,
+    )
+
+    with IndexerStore(database_path) as store:
+        journal_mode = store.connection.execute(
+            "PRAGMA journal_mode"
+        ).fetchone()
+        assert journal_mode is not None
+        assert journal_mode[0] == "wal"
+
+        assert store.start_attempt(event_v1) is True
+        passages_v1 = chunker.chunk(
+            event_v1.snapshot_id,
+            "first published content",
+        )
+        store.save_passages(passages_v1)
+        index_v1 = store.create_index_version(
+            event_v1,
+            passages_v1,
+        )
+
+        reader = sqlite3.connect(
+            f"file:{database_path}?mode=ro",
+            uri=True,
+        )
+        reader.row_factory = sqlite3.Row
+
+        try:
+            assert reader.execute(
+                "SELECT * FROM published_index_versions"
+            ).fetchall() == []
+            assert reader.execute(
+                "SELECT * FROM published_passages"
+            ).fetchall() == []
+
+            assert store.activate(event_v1, index_v1) is True
+
+            assert store.start_attempt(event_v2) is True
+            passages_v2 = chunker.chunk(
+                event_v2.snapshot_id,
+                "second published content",
+            )
+            store.save_passages(passages_v2)
+            index_v2 = store.create_index_version(
+                event_v2,
+                passages_v2,
+            )
+
+            # The ready v2 candidate remains invisible; v1 is still current.
+            visible_before_activation = reader.execute(
+                """
+                SELECT index_version, status
+                FROM published_index_versions
+                ORDER BY index_version
+                """
+            ).fetchall()
+            assert [tuple(row) for row in visible_before_activation] == [
+                (index_v1, "active"),
+            ]
+
+            assert store.activate(event_v2, index_v2) is True
+
+            visible_after_activation = reader.execute(
+                """
+                SELECT index_version, status
+                FROM published_index_versions
+                ORDER BY index_version
+                """
+            ).fetchall()
+            assert [tuple(row) for row in visible_after_activation] == [
+                (index_v1, "superseded"),
+                (index_v2, "active"),
+            ]
+
+            current = reader.execute(
+                """
+                SELECT index_version
+                FROM current_index
+                WHERE singleton = 1
+                """
+            ).fetchone()
+            assert current is not None
+            assert current["index_version"] == index_v2
+
+            published_v2 = reader.execute(
+                """
+                SELECT source_url, checked_at, text
+                FROM published_passages
+                WHERE index_version = ?
+                ORDER BY position
+                """,
+                (index_v2,),
+            ).fetchall()
+            assert [row["text"] for row in published_v2] == [
+                passage.text for passage in passages_v2
+            ]
+            assert {
+                row["source_url"] for row in published_v2
+            } == {event_v2.source_url}
+            assert {
+                row["checked_at"] for row in published_v2
+            } == {event_v2.checked_at}
+        finally:
+            reader.close()
 
 
 def test_index_manifest_requires_saved_passages(
@@ -981,14 +1144,84 @@ def test_worker_rebuilds_stale_candidate_without_broker_retry(
         current_index = store.get_current_index_version()
         assert current_index is not None
 
-        assert store.get_index_source(
+        indexed_s001 = store.get_index_source(
             current_index,
             "S001",
-        ) is not None
-        assert store.get_index_source(
+        )
+        indexed_s002 = store.get_index_source(
             current_index,
             "S002",
-        ) is not None
+        )
+
+        assert indexed_s001 is not None
+        assert indexed_s001.source_url == event_s001.source_url
+        assert indexed_s001.checked_at == event_s001.checked_at
+        assert indexed_s002 is not None
+        assert indexed_s002.source_url == event_s002.source_url
+        assert indexed_s002.checked_at == event_s002.checked_at
+
+
+def test_worker_bounds_internal_stale_rebuilds(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    clean_text = "Information from a continuously changing index"
+    event = make_event(clean_text=clean_text)
+
+    with IndexerStore(
+        tmp_path / "indexer.sqlite3"
+    ) as store:
+        real_builder = SQLiteIndexBuilder(store)
+
+        class RecordingBuilder:
+            def __init__(self) -> None:
+                self.candidates: list[int] = []
+
+            def build_index(
+                self,
+                update: DocumentUpdateEvent,
+                snapshot: SnapshotResponse,
+            ) -> int:
+                candidate = real_builder.build_index(
+                    update,
+                    snapshot,
+                )
+                self.candidates.append(candidate)
+                return candidate
+
+        def always_stale(
+            update: DocumentUpdateEvent,
+            index_version: int,
+        ) -> bool:
+            raise StaleIndexCandidateError(
+                "stale index candidate: simulated contention"
+            )
+
+        monkeypatch.setattr(store, "activate", always_stale)
+        builder = RecordingBuilder()
+        worker = IndexingWorker(
+            store=store,
+            snapshot_client=FakeSnapshotClient(
+                make_snapshot(event, clean_text)
+            ),
+            index_builder=builder,
+            max_attempts=3,
+            max_publication_attempts=2,
+        )
+
+        result = worker.process(event)
+
+        assert result.action == ProcessingAction.RETRY
+        assert len(builder.candidates) == 2
+        assert all(
+            store.get_index_status(candidate) == "discarded"
+            for candidate in builder.candidates
+        )
+
+        event_record = store.get_event(event.event_id)
+        assert event_record is not None
+        assert event_record.status == "failed"
+        assert event_record.attempt_count == 1
 
 
 def test_real_index_builder_completes_worker_flow(

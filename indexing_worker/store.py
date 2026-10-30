@@ -26,6 +26,16 @@ class ActiveSource:
     index_version: int
 
 
+@dataclass(frozen=True, slots=True)
+class IndexSource:
+    index_version: int
+    source_id: str
+    source_version: int
+    snapshot_id: str
+    source_url: str
+    checked_at: str
+
+
 class StaleIndexCandidateError(ValueError):
     """The current index changed while a candidate was being built."""
 
@@ -39,6 +49,8 @@ class IndexerStore:
             isolation_level=None,
         )
         self.connection.row_factory = sqlite3.Row
+        self.connection.execute("PRAGMA journal_mode = WAL")
+        self.connection.execute("PRAGMA busy_timeout = 5000")
         self.connection.execute("PRAGMA foreign_keys = ON")
         self._create_schema()
 
@@ -114,6 +126,8 @@ class IndexerStore:
                 source_id TEXT NOT NULL,
                 source_version INTEGER NOT NULL,
                 snapshot_id TEXT NOT NULL,
+                source_url TEXT NOT NULL,
+                checked_at TEXT NOT NULL,
                 PRIMARY KEY (
                     index_version,
                     source_id
@@ -151,6 +165,39 @@ class IndexerStore:
                 FOREIGN KEY (index_version)
                     REFERENCES index_versions(index_version)
             );
+
+            CREATE VIEW IF NOT EXISTS published_index_versions AS
+            SELECT
+                index_version,
+                status,
+                activated_at
+            FROM index_versions
+            WHERE status IN ('active', 'superseded');
+
+            CREATE VIEW IF NOT EXISTS published_passages AS
+            SELECT
+                versions.index_version,
+                versions.status AS index_status,
+                versions.activated_at,
+                sources.source_id,
+                sources.source_version,
+                sources.snapshot_id,
+                sources.source_url,
+                sources.checked_at,
+                mappings.passage_id,
+                mappings.position,
+                passages.text,
+                passages.content_sha256,
+                passages.chunker_version
+            FROM index_versions AS versions
+            JOIN index_sources AS sources
+                ON sources.index_version = versions.index_version
+            JOIN index_passages AS mappings
+                ON mappings.index_version = sources.index_version
+                AND mappings.source_id = sources.source_id
+            JOIN passages
+                ON passages.passage_id = mappings.passage_id
+            WHERE versions.status IN ('active', 'superseded');
             """
         )
 
@@ -696,13 +743,17 @@ class IndexerStore:
                         index_version,
                         source_id,
                         source_version,
-                        snapshot_id
+                        snapshot_id,
+                        source_url,
+                        checked_at
                     )
                     SELECT
                         ?,
                         source_id,
                         source_version,
-                        snapshot_id
+                        snapshot_id,
+                        source_url,
+                        checked_at
                     FROM index_sources
                     WHERE
                         index_version = ?
@@ -747,15 +798,19 @@ class IndexerStore:
                     index_version,
                     source_id,
                     source_version,
-                    snapshot_id
+                    snapshot_id,
+                    source_url,
+                    checked_at
                 )
-                VALUES (?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?)
                 """,
                 (
                     index_version,
                     event.source_id,
                     event.source_version,
                     event.snapshot_id,
+                    event.source_url,
+                    event.checked_at,
                 ),
             )
 
@@ -845,14 +900,16 @@ class IndexerStore:
         self,
         index_version: int,
         source_id: str,
-    ) -> ActiveSource | None:
+    ) -> IndexSource | None:
         row = self.connection.execute(
             """
             SELECT
                 index_version,
                 source_id,
                 source_version,
-                snapshot_id
+                snapshot_id,
+                source_url,
+                checked_at
             FROM index_sources
             WHERE
                 index_version = ?
@@ -864,11 +921,13 @@ class IndexerStore:
         if row is None:
             return None
 
-        return ActiveSource(
+        return IndexSource(
+            index_version=row["index_version"],
             source_id=row["source_id"],
             source_version=row["source_version"],
             snapshot_id=row["snapshot_id"],
-            index_version=row["index_version"],
+            source_url=row["source_url"],
+            checked_at=row["checked_at"],
         )
 
     def get_index_passage_ids(

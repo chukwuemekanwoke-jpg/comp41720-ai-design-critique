@@ -27,7 +27,8 @@ class DeterministicChunker:
         self,
         max_words: int = 120,
         overlap_words: int = 20,
-        version: str = "word-window-v1",
+        max_chars: int = 4000,
+        version: str = "word-char-window-v2",
     ) -> None:
         if max_words <= 0:
             raise ValueError("max_words must be positive")
@@ -40,11 +41,15 @@ class DeterministicChunker:
                 "overlap_words must be smaller than max_words"
             )
 
+        if max_chars <= 0:
+            raise ValueError("max_chars must be positive")
+
         if not version.strip():
             raise ValueError("version cannot be empty")
 
         self.max_words = max_words
         self.overlap_words = overlap_words
+        self.max_chars = max_chars
         self.version = version
 
     def chunk(
@@ -58,12 +63,24 @@ class DeterministicChunker:
             raise ValueError("clean_text cannot be empty")
 
         passages: list[Passage] = []
-        step = self.max_words - self.overlap_words
         start = 0
         chunk_index = 0
 
         while start < len(words):
-            chunk_words = words[start: start + self.max_words]
+            end = min(start + self.max_words, len(words))
+
+            while (
+                end > start
+                and len(" ".join(words[start:end])) > self.max_chars
+            ):
+                end -= 1
+
+            if end == start:
+                raise ValueError(
+                    "a single word exceeds max_chars"
+                )
+
+            chunk_words = words[start:end]
             text = " ".join(chunk_words)
 
             content_sha256 = hashlib.sha256(
@@ -92,10 +109,10 @@ class DeterministicChunker:
                 )
             )
 
-            if start + self.max_words >= len(words):
+            if end >= len(words):
                 break
 
-            start += step
+            start = max(start + 1, end - self.overlap_words)
             chunk_index += 1
 
         return passages
