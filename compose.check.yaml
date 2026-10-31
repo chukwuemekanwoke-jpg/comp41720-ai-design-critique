@@ -1,0 +1,117 @@
+name: studentpath-check
+x-python: &python
+  image: studentpath-check:local
+  build:
+    context: .
+    dockerfile: Dockerfile.check
+  init: true
+services:
+  rabbitmq:
+    image: rabbitmq:4-management
+    environment:
+      RABBITMQ_DEFAULT_USER: check
+      RABBITMQ_DEFAULT_PASS: local-check-only
+    healthcheck:
+      test: [CMD, rabbitmq-diagnostics, -q, check_port_connectivity]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+  seed:
+    <<: *python
+    command: [python, -m, source_collector, --manifest, docker-check/manifest.json, --db, /state/collector.sqlite3, --fixture-dir, docker-check]
+    volumes: [collector:/state]
+  collector:
+    <<: *python
+    command: [python, -m, uvicorn, source_collector.snapshot_api:app, --host, 0.0.0.0, --port, '8001']
+    environment:
+      COLLECTOR_DB: /state/collector.sqlite3
+    volumes: [collector:/state]
+    depends_on:
+      seed: {condition: service_completed_successfully}
+  retrieval:
+    <<: *python
+    command: [python, -m, uvicorn, retrieval_api.app:app, --host, 0.0.0.0, --port, '8002']
+    environment:
+      RETRIEVAL_INDEX_DB: /index/indexer.sqlite3
+    volumes: [index:/index:ro]
+  indexer:
+    <<: *python
+    command: [python, -m, indexing_worker.consumer]
+    restart: unless-stopped
+    environment:
+      RABBITMQ_URL: amqp://check:local-check-only@rabbitmq:5672/%2F
+      RABBITMQ_QUEUE: studentpath.local.updates
+      INDEXER_DB: /index/indexer.sqlite3
+      COLLECTOR_BASE_URL: http://collector:8001
+    volumes: [index:/index]
+    depends_on:
+      rabbitmq: {condition: service_healthy}
+      collector: {condition: service_started}
+  relay:
+    <<: *python
+    command: [python, -m, source_collector.relay]
+    restart: unless-stopped
+    environment:
+      RABBITMQ_URL: amqp://check:local-check-only@rabbitmq:5672/%2F
+      RABBITMQ_QUEUE: studentpath.local.updates
+      COLLECTOR_DB: /state/collector.sqlite3
+      RELAY_RETRY_SECONDS: '2'
+    volumes: [collector:/state]
+    depends_on:
+      rabbitmq: {condition: service_healthy}
+      seed: {condition: service_completed_successfully}
+  retrieval-demo:
+    <<: *python
+    command: [python, -m, uvicorn, retrieval_api.app:create_demo_app, --factory, --host, 0.0.0.0, --port, '8002']
+  answer:
+    <<: *python
+    command: [python, -m, uvicorn, answer_service.app:app, --host, 0.0.0.0, --port, '8003']
+    environment:
+      ANSWER_GENERATION_MODE: evidence_only
+  gateway:
+    <<: *python
+    command: [python, -m, uvicorn, gateway.app:app, --host, 0.0.0.0, --port, '8000']
+    environment:
+      RETRIEVAL_BASE_URL: http://retrieval:8002
+      ANSWER_BASE_URL: http://answer:8003
+    depends_on: [retrieval, answer]
+  gateway-demo:
+    <<: *python
+    command: [python, -m, uvicorn, gateway.app:app, --host, 0.0.0.0, --port, '8000']
+    environment:
+      RETRIEVAL_BASE_URL: http://retrieval-demo:8002
+      ANSWER_BASE_URL: http://answer:8003
+    depends_on: [retrieval-demo, answer]
+  web:
+    image: nginx:alpine
+    ports: ['127.0.0.1:8088:80']
+    volumes:
+      - ./frontend/dist:/usr/share/nginx/html:ro
+      - ./docker-check/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on: [gateway, gateway-demo]
+  tests:
+    <<: *python
+    profiles: [checks]
+    environment:
+      RABBITMQ_INTEGRATION_URL: amqp://check:local-check-only@rabbitmq:5672/%2F
+    command: [python, -m, pytest, -q, --junitxml=/results/pytest.xml]
+    volumes: [./docker-check-results:/results]
+    depends_on:
+      rabbitmq: {condition: service_healthy}
+  product-check:
+    <<: *python
+    profiles: [checks]
+    environment:
+      RABBITMQ_URL: amqp://check:local-check-only@rabbitmq:5672/%2F
+    command: [python, docker-check/check_product.py]
+    volumes:
+      - ./docker-check:/app/docker-check:ro
+      - collector:/state
+      - ./docker-check-results:/results
+    depends_on:
+      rabbitmq: {condition: service_healthy}
+      collector: {condition: service_started}
+      web: {condition: service_started}
+volumes:
+  collector:
+  index:
