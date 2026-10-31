@@ -185,7 +185,8 @@ def test_completed_duplicate_is_skipped(
 
     with IndexerStore(database_path) as store:
         assert store.start_attempt(event) is True
-        assert store.activate(event, index_version=1) is True
+        index_version = build_candidate(store, event)
+        assert store.activate(event, index_version=index_version) is True
 
         assert store.start_attempt(event) is False
 
@@ -213,7 +214,7 @@ def test_older_event_cannot_replace_newer_version(
         assert store.start_attempt(newer_event) is True
         assert store.activate(
             newer_event,
-            index_version=2,
+            index_version=build_candidate(store, newer_event),
         ) is True
 
         assert store.start_attempt(older_event) is True
@@ -261,7 +262,7 @@ def test_content_reversion_activates_new_logical_version(
             assert store.start_attempt(event) is True
             assert store.activate(
                 event,
-                index_version=index_version,
+                index_version=build_candidate(store, event),
             ) is True
 
         active = store.get_active_source("S001")
@@ -287,12 +288,12 @@ class FakeSnapshotClient:
         return self.snapshot
 
 
-class FakeIndexBuilder:
+class CountingIndexBuilder(SQLiteIndexBuilder):
     def __init__(
         self,
-        index_version: int,
+        store: IndexerStore,
     ) -> None:
-        self.index_version = index_version
+        super().__init__(store)
         self.call_count = 0
 
     def build_index(
@@ -301,7 +302,7 @@ class FakeIndexBuilder:
         snapshot: SnapshotResponse,
     ) -> int:
         self.call_count += 1
-        return self.index_version
+        return super().build_index(event, snapshot)
 
 
 def make_snapshot(
@@ -331,11 +332,12 @@ def test_worker_completes_and_activates_event(
     snapshot_client = FakeSnapshotClient(
         make_snapshot(event, clean_text)
     )
-    index_builder = FakeIndexBuilder(index_version=1)
 
     with IndexerStore(
         tmp_path / "indexer.sqlite3"
     ) as store:
+        index_builder = CountingIndexBuilder(store)
+
         worker = IndexingWorker(
             store=store,
             snapshot_client=snapshot_client,
@@ -369,11 +371,12 @@ def test_worker_skips_completed_duplicate(
     snapshot_client = FakeSnapshotClient(
         make_snapshot(event, clean_text)
     )
-    index_builder = FakeIndexBuilder(index_version=1)
 
     with IndexerStore(
         tmp_path / "indexer.sqlite3"
     ) as store:
+        index_builder = CountingIndexBuilder(store)
+
         worker = IndexingWorker(
             store=store,
             snapshot_client=snapshot_client,
@@ -411,11 +414,12 @@ def test_invalid_snapshot_retries_then_dead_letters(
     )
 
     snapshot_client = FakeSnapshotClient(invalid_snapshot)
-    index_builder = FakeIndexBuilder(index_version=1)
 
     with IndexerStore(
         tmp_path / "indexer.sqlite3"
     ) as store:
+        index_builder = CountingIndexBuilder(store)
+
         worker = IndexingWorker(
             store=store,
             snapshot_client=snapshot_client,
@@ -461,7 +465,6 @@ def test_worker_skips_obsolete_event_before_fetching(
             clean_text="Older content",
         )
     )
-    index_builder = FakeIndexBuilder(index_version=3)
 
     with IndexerStore(
         tmp_path / "indexer.sqlite3"
@@ -469,8 +472,10 @@ def test_worker_skips_obsolete_event_before_fetching(
         assert store.start_attempt(newer_event) is True
         assert store.activate(
             newer_event,
-            index_version=2,
+            index_version=build_candidate(store, newer_event),
         ) is True
+
+        index_builder = CountingIndexBuilder(store)
 
         worker = IndexingWorker(
             store=store,
@@ -481,7 +486,7 @@ def test_worker_skips_obsolete_event_before_fetching(
         result = worker.process(older_event)
 
         assert result.action == ProcessingAction.ACK_OBSOLETE
-        assert result.index_version == 2
+        assert result.index_version == 1
 
         assert snapshot_client.call_count == 0
         assert index_builder.call_count == 0
@@ -1541,3 +1546,25 @@ def test_message_handler_dead_letters_invalid_json() -> None:
     assert decision.action == MessageAction.DEAD_LETTER
     assert decision.event_id is None
     assert decision.error is not None
+
+
+def build_candidate(store, event):
+    passages = DeterministicChunker().chunk(event.snapshot_id, "Fixture passage")
+    store.save_passages(passages)
+    return store.create_index_version(event, passages)
+
+
+def test_missing_candidate_leaves_event_retryable(tmp_path):
+    event = make_event()
+    with IndexerStore(tmp_path / "indexer.sqlite3") as store:
+        store.start_attempt(event)
+        with pytest.raises(ValueError, match="index version does not exist"):
+            store.activate(event, 999)
+        assert store.get_current_index_version() is None
+        assert store.get_active_source(event.source_id) is None
+        assert store.get_event(event.event_id).status == "processing"
+        assert store.start_attempt(event) is True
+        candidate = build_candidate(store, event)
+        assert store.activate(event, candidate) is True
+        assert store.get_current_index_version() == candidate
+        assert store.start_attempt(event) is False

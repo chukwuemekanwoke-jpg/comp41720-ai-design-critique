@@ -391,99 +391,101 @@ class IndexerStore:
                 (index_version,),
             ).fetchone()
 
-            if candidate is not None:
-                if candidate["status"] != "ready":
-                    raise ValueError(
-                        "only a ready index version can be activated"
-                    )
+            if candidate is None:
+                raise ValueError("index version does not exist")
 
-                indexed_source = self.connection.execute(
-                    """
-                        SELECT source_version, snapshot_id
-                        FROM index_sources
-                        WHERE
-                            index_version = ?
-                            AND source_id = ?
-                        """,
-                    (
-                        index_version,
-                        event.source_id,
-                    ),
-                ).fetchone()
-
-                if indexed_source is None:
-                    raise ValueError(
-                        "index version does not contain the event source"
-                    )
-
-                if (
-                    indexed_source["source_version"]
-                    != event.source_version
-                    or indexed_source["snapshot_id"]
-                    != event.snapshot_id
-                ):
-                    raise ValueError(
-                        "index source does not match the event"
-                    )
-
-                previous = self.connection.execute(
-                    """
-                        SELECT index_version
-                        FROM current_index
-                        WHERE singleton = 1
-                        """
-                ).fetchone()
-
-                current_index_version = (
-                    int(previous["index_version"])
-                    if previous is not None
-                    else None
+            if candidate["status"] != "ready":
+                raise ValueError(
+                    "only a ready index version can be activated"
                 )
 
-                if (
-                    candidate["base_index_version"]
-                    != current_index_version
-                ):
-                    raise StaleIndexCandidateError(
-                        "stale index candidate: current index changed "
-                        "after the candidate was built"
-                    )
+            indexed_source = self.connection.execute(
+                """
+                    SELECT source_version, snapshot_id
+                    FROM index_sources
+                    WHERE
+                        index_version = ?
+                        AND source_id = ?
+                    """,
+                (
+                    index_version,
+                    event.source_id,
+                ),
+            ).fetchone()
 
-                if previous is not None:
-                    self.connection.execute(
-                        """
-                            UPDATE index_versions
-                            SET status = 'superseded'
-                            WHERE
-                                index_version = ?
-                                AND status = 'active'
-                            """,
-                        (previous["index_version"],),
-                    )
+            if indexed_source is None:
+                raise ValueError(
+                    "index version does not contain the event source"
+                )
 
+            if (
+                indexed_source["source_version"]
+                != event.source_version
+                or indexed_source["snapshot_id"]
+                != event.snapshot_id
+            ):
+                raise ValueError(
+                    "index source does not match the event"
+                )
+
+            previous = self.connection.execute(
+                """
+                    SELECT index_version
+                    FROM current_index
+                    WHERE singleton = 1
+                    """
+            ).fetchone()
+
+            current_index_version = (
+                int(previous["index_version"])
+                if previous is not None
+                else None
+            )
+
+            if (
+                candidate["base_index_version"]
+                != current_index_version
+            ):
+                raise StaleIndexCandidateError(
+                    "stale index candidate: current index changed "
+                    "after the candidate was built"
+                )
+
+            if previous is not None:
                 self.connection.execute(
                     """
                         UPDATE index_versions
-                        SET
-                            status = 'active',
-                            activated_at = CURRENT_TIMESTAMP
-                        WHERE index_version = ?
+                        SET status = 'superseded'
+                        WHERE
+                            index_version = ?
+                            AND status = 'active'
                         """,
-                    (index_version,),
+                    (previous["index_version"],),
                 )
 
-                self.connection.execute(
-                    """
-                        INSERT INTO current_index (
-                            singleton,
-                            index_version
-                        )
-                        VALUES (1, ?)
-                        ON CONFLICT(singleton) DO UPDATE SET
-                            index_version = excluded.index_version
-                        """,
-                    (index_version,),
-                )
+            self.connection.execute(
+                """
+                    UPDATE index_versions
+                    SET
+                        status = 'active',
+                        activated_at = CURRENT_TIMESTAMP
+                    WHERE index_version = ?
+                    """,
+                (index_version,),
+            )
+
+            self.connection.execute(
+                """
+                    INSERT INTO current_index (
+                        singleton,
+                        index_version
+                    )
+                    VALUES (1, ?)
+                    ON CONFLICT(singleton) DO UPDATE SET
+                        index_version = excluded.index_version
+                    """,
+                (index_version,),
+            )
 
             self.connection.execute(
                 """
