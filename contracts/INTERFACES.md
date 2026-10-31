@@ -7,6 +7,7 @@ remains the asynchronous update path. The browser connects only to the Gateway.
 |---|---|---|
 | Frontend → Gateway questions | [Gateway](gateway.openapi.yaml) | REST orchestration implemented; frontend supports configured Gateway origin |
 | Gateway → Retrieval | [Retrieval](retrieval.openapi.yaml) | Matches local prototype; storage adapter pending |
+| Indexer SQLite → Retrieval | [Publication storage](../docs/indexer-retrieval-storage.md) | Published read views implemented; Retrieval read-only adapter pending |
 | Gateway → Answer | [Answer](answer.openapi.yaml) | PR #6 merged; Gateway mapping implemented and tested against actual ASGI API |
 | Indexer → Collector | [Collector](collector.openapi.yaml) | Existing snapshot API; unchanged |
 | Gateway → ingestion extension | [Ingestion](ingestion.openapi.yaml) | Proposal; collector/indexer owner approval required |
