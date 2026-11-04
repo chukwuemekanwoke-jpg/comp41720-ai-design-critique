@@ -1,5 +1,6 @@
 """FastAPI retrieval endpoint with injectable storage and pinned evidence."""
 import re
+import os
 import uuid
 from datetime import datetime
 from typing import Literal
@@ -103,4 +104,12 @@ def create_demo_app() -> FastAPI:
     return create_app(demo_repository())
 
 
-app = create_app()
+def create_configured_app() -> FastAPI:
+    path = os.getenv("RETRIEVAL_INDEX_DB")
+    if path:
+        from .sqlite_repository import SQLitePassageRepository
+        return create_app(SQLitePassageRepository(path))
+    return create_app()
+
+
+app = create_configured_app()
