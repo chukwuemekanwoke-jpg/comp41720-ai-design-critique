@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
-  title: StudentPath Collector Snapshot API
-  version: 1.0.0
+  title: StudentPath Collector API
+  version: 1.1.0
 paths:
   /snapshots/{snapshot_id}:
     get:
@@ -30,3 +30,114 @@ paths:
         '404': {description: Snapshot not found}
         '500': {description: Integrity failure}
         '503': {description: Store unavailable}
+  /sources/{source_id}/status:
+    get:
+      operationId: getSourceStatus
+      summary: Read the latest confirmed source version and separate fetch health
+      description: >-
+        Read-only, no fetching or publishing. Compare source_version with the
+        per-source version of retrieved evidence, not the overall index generation.
+        detected_at changes only on confirmed content changes (including the first
+        snapshot and A-B-A reversions). Fetch failure alone is not evidence of change.
+        This endpoint does not know which version the Indexer has activated.
+      parameters:
+        - in: path
+          name: source_id
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 50
+            pattern: '^[A-Za-z0-9_-]{1,50}$'
+      responses:
+        '200':
+          description: >-
+            Known source. Version zero has no confirmed snapshot, detection or
+            success timestamp. A legacy confirmed source may have an unknown
+            detected_at (null) if its latest event cannot be verified.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/SourceStatus'}
+              examples:
+                confirmed:
+                  value:
+                    source_id: S001
+                    source_version: 3
+                    snapshot_id: 'S001:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+                    detected_at: '2026-11-04T09:00:00+00:00'
+                    last_success_at: '2026-11-04T10:00:00+00:00'
+                    last_attempt_at: '2026-11-04T10:00:00+00:00'
+                    last_error: null
+                firstFetchFailed:
+                  value:
+                    source_id: S001
+                    source_version: 0
+                    snapshot_id: null
+                    detected_at: null
+                    last_success_at: null
+                    last_attempt_at: '2026-11-04T10:00:00+00:00'
+                    last_error: Latest source fetch or content extraction failed.
+        '400':
+          description: Malformed source ID
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/StatusError'}
+        '404':
+          description: Unknown source ID
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/StatusError'}
+        '500':
+          description: Inconsistent source state or invalid stored timestamp; no successful status returned
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/StatusError'}
+        '503':
+          description: Store unavailable, locked beyond timeout or not upgraded; no database created or migrated
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/StatusError'}
+components:
+  schemas:
+    SourceStatus:
+      type: object
+      additionalProperties: false
+      required: [source_id, source_version, snapshot_id, detected_at, last_success_at, last_attempt_at, last_error]
+      properties:
+        source_id:
+          type: string
+          pattern: '^[A-Za-z0-9_-]{1,50}$'
+        source_version:
+          type: integer
+          minimum: 0
+          description: Latest confirmed per-source logical version; zero means no successful content check yet.
+        snapshot_id:
+          type: string
+          nullable: true
+          pattern: '^[A-Za-z0-9_-]{1,50}:[a-f0-9]{64}$'
+          description: Latest confirmed immutable snapshot; null for version zero.
+        detected_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Latest confirmed change time in UTC; null for no confirmed change or unverifiable legacy history.
+        last_success_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Most recent successful fetch/clean check, including unchanged checks; null before first success.
+        last_attempt_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Most recent attempted fetch time in UTC, whether successful or not.
+        last_error:
+          type: string
+          nullable: true
+          description: Safe generic fetch/clean failure summary, without underlying exception details; null after success.
+    StatusError:
+      type: object
+      additionalProperties: false
+      required: [detail]
+      properties:
+        detail: {type: string}
