@@ -10,6 +10,7 @@ sys.path.insert(0, '/app')
 import httpx
 import pika
 from source_collector.collector import Collector
+from dead_letter import take_quarantined
 
 results = []
 
@@ -87,13 +88,7 @@ try:
     marker = ('invalid-check-' + uuid.uuid4().hex).encode()
     channel.basic_publish('', queue, marker, mandatory=True,
         properties=pika.BasicProperties(delivery_mode=2))
-    def quarantined():
-        method, properties, body = channel.basic_get(queue=queue + '.deadletter', auto_ack=False)
-        if method is None:
-            return False
-        channel.basic_ack(method.delivery_tag)
-        return body == marker
-    eventually(quarantined)
+    eventually(lambda: take_quarantined(channel, queue + '.deadletter', marker))
     assert retrieve(token).json()['index_version'] == second['index_version']
     record('duplicate_and_invalid_delivery', 'Duplicate did not republish index; malformed marker quarantined')
 finally:

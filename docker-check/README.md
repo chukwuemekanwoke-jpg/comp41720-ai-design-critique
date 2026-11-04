@@ -72,6 +72,9 @@ docker compose -f compose.check.yaml run --rm product-check
 Restarting nginx refreshes service addresses after backend container recreation.
 On first startup, allow time for RabbitMQ and the initial index publication.
 The integration check adds synthetic records to the local Collector database.
+It publishes one malformed marker message and removes only that marker from the
+dead-letter queue. Any other dead letters, from the running pipeline or earlier
+runs, are requeued untouched so they stay available for inspection.
 
 To change the startup fixture, edit `docker-check/LOCAL_PIPELINE.html`, rebuild,
 and rerun the `seed` service. The continuous relay/indexer then publishes its
@@ -84,9 +87,12 @@ docker compose -f compose.check.yaml down
 ```
 
 Only nginx publishes a host port, on loopback 8088. RabbitMQ's fixed credentials
-are disposable local-check credentials. Collector and index data use named
-volumes. The check broker has container-local storage: ordinary stop/start keeps
-it, but broker recreation can lose queued messages. Add persistent broker storage
-and agree operational recovery before deployment. Other Docker projects are
-untouched. Admin uploads/authentication and generated-answer evaluation remain
-outside this local integration work.
+are disposable local-check credentials. Collector, index and broker data use
+named volumes. The broker has a fixed hostname because RabbitMQ stores data under
+a node name taken from the hostname; without it, a recreated container starts
+empty even with the volume attached. Durable queues and persistent messages
+therefore survive `down` and container recreation. `down -v` deletes all three
+volumes and resets the check. Operational recovery still needs team agreement
+before deployment. Other Docker projects are untouched. Admin
+uploads/authentication and generated-answer evaluation remain outside this local
+integration work.

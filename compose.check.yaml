@@ -8,9 +8,13 @@ x-python: &python
 services:
   rabbitmq:
     image: rabbitmq:4-management
+    # RabbitMQ stores data under its node name, which comes from the hostname.
+    # A fixed hostname lets a recreated container reuse the volume's queues.
+    hostname: rabbitmq
     environment:
       RABBITMQ_DEFAULT_USER: check
       RABBITMQ_DEFAULT_PASS: local-check-only
+    volumes: [rabbitmq:/var/lib/rabbitmq]
     healthcheck:
       test: [CMD, rabbitmq-diagnostics, -q, check_port_connectivity]
       interval: 5s
@@ -115,3 +119,4 @@ services:
 volumes:
   collector:
   index:
+  rabbitmq:
