@@ -4,6 +4,13 @@ The event and five-field response contract were confirmed by Kezhen in the team
 discussion on 2026-10-24. This implementation returns stored snapshots without
 re-fetching the live page or cleaning its text again.
 
+As of 2026-11-04 the same process also exposes a read-only
+`GET /sources/{source_id}/status` for version/freshness comparisons. See
+[the Source Status contract and migration](collector-source-status.md).
+The snapshot response described below is unchanged. For legacy stores, run
+`python -m source_collector.migrate --db collector.sqlite3` before using status;
+the API never upgrades a database itself.
+
 ## Run locally
 
 From the repository root in a Python virtual environment:

@@ -10,6 +10,7 @@ remains the asynchronous update path. The browser connects only to the Gateway.
 | Indexer SQLite → Retrieval | [Publication storage](../docs/indexer-retrieval-storage.md) | Published read views implemented; Retrieval read-only adapter pending |
 | Gateway → Answer | [Answer](answer.openapi.yaml) | PR #6 merged; Gateway mapping implemented and tested against actual ASGI API |
 | Indexer → Collector | [Collector](collector.openapi.yaml) | Existing snapshot API; unchanged |
+| Retrieval → Collector source status | [Collector](collector.openapi.yaml) | Additive read-only status API; [migration and comparison policy](../docs/collector-source-status.md); Retrieval wiring owned by Emeka |
 | Gateway → ingestion extension | [Ingestion](ingestion.openapi.yaml) | Proposal; collector/indexer owner approval required |
 | Frontend → admin/collection endpoints | Gateway operations marked `x-implementation: proposed` | No authentication, upload or status backend yet |
 | Collector → RabbitMQ → Indexer | [Event schema](events/document-updated.schema.json) | Existing eight-field payload unchanged |
