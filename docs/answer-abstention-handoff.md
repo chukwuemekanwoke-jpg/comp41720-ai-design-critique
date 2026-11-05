@@ -4,6 +4,8 @@ Date: 2026-11-05. Owner: Jordan Hennessy.
 Status: proposal for Jordan and Emeka to review. No runtime or OpenAPI changes
 are made by this document. The examples below are not accepted by current APIs.
 
+Related proposal: [PR #19, ADR-0003](https://github.com/chukwuemekanwoke-jpg/comp41720-ai-design-critique/pull/19).
+
 ## What has been agreed, and what is proposed
 
 Emeka confirmed that the Gateway should pass the decision to the Answer Service,
@@ -24,7 +26,9 @@ In plain language:
 
 For this explicit pending-update decision, use a fixed message template and do
 not call Ollama. This avoids turning known outdated evidence into advice, works
-when Ollama is unavailable, and makes the explanation testable. 
+when Ollama is unavailable, and makes the explanation testable. This remains a
+design choice for owner review; keeping the Answer Service in the path does not
+require calling Ollama for every response.
 
 Normal requests continue through existing evidence-only or Ollama paths. An
 Ollama failure remains `degraded`; this policy refusal is `insufficient_evidence`
@@ -92,6 +96,10 @@ occurs; omit it from normal/generated, empty-evidence and degraded responses.
 Do not put the explanation in `answer`: that would contradict the existing
 no-claims rule for `insufficient_evidence`.
 
+Return HTTP 200 for a valid policy refusal and echo `X-Request-ID` in both the
+response header and body, as for other valid answer requests. A policy refusal
+is distinct from a malformed request, which continues to return HTTP 400.
+
 ```json
 {
   "request_id": "pending-update-example-1",
@@ -109,7 +117,7 @@ no-claims rule for `insufficient_evidence`.
   "notice": "Information only. This is not an eligibility decision or legal advice.",
   "abstention": {
     "reason": "pending_source_update",
-    "message": "A source used for this question has changed and the saved information has not been updated yet. Check the linked official source or try again shortly.",
+    "message": "One or more sources used for this question have changed and the saved information has not been updated yet. Check the linked official sources or try again shortly.",
     "affected_sources": [
       {
         "source_id": "SYN001",
@@ -138,7 +146,12 @@ it is a new proposed metadata label, not a real model name.
 ## Proposed validation and safety rules
 
 - Retain current input bounds and freshness requirements. Allow at most 10
-  affected sources, with strict types and no duplicate `source_id` entries.
+  affected sources and require at least one, with strict types and no duplicate
+  `source_id` entries. Reject unknown fields in the decision and source objects.
+- Source IDs are nonblank strings of at most 256 characters. Both source
+  versions are positive integers, not booleans or numeric strings. `detected_at`
+  is a required key: its value is null or a timezone-aware timestamp string of
+  at most 64 characters. Follow existing canonical URL validation on response links.
 - Each affected source must occur in supplied evidence. Every passage for that
   source must agree on its indexed version and canonical URL.
 - `indexed_source_version` must match the supplied source version, and
@@ -152,7 +165,10 @@ it is a new proposed metadata label, not a real model name.
   endpoint still accepts a question; users cannot submit this object through it.
   This describes the interface, not authentication of the internal network.
 - Gateway verifies response reason, affected sources, versions, detection dates,
-  URLs, request ID and pinned-index metadata against what it supplied.
+  URLs, request ID and pinned-index metadata against what it supplied. The full
+  affected-source set must match, without omissions or duplicates. This response
+  must remain `insufficient_evidence`, with null answer, empty checklist/sources
+  and `fallback_used: false`; the model label must not claim a generation ran.
 - Retrieval remains responsible for establishing a real pending update and
   preserving previously confirmed changes during status outages. Answer can
   validate the handed-over facts but cannot independently prove their freshness.
