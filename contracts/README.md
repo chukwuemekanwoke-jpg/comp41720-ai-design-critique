@@ -9,7 +9,7 @@ Keep the files together: relative references use `common.openapi.yaml`.
 | `gateway.openapi.yaml` | Public REST orchestration and proposed admin/collection operations |
 | `retrieval.openapi.yaml` | Current standalone retrieval HTTP interface |
 | `answer.openapi.yaml` | PR #6 alignment draft; Jordan's review required |
-| `collector.openapi.yaml` | Existing snapshot HTTP API, unchanged |
+| `collector.openapi.yaml` | Existing snapshot API plus read-only source status/version/fetch health |
 | `ingestion.openapi.yaml` | Proposed service-authenticated policy ingestion/review/status extension |
 | `common.openapi.yaml` | Shared provenance, answer, upload, job and error shapes |
 

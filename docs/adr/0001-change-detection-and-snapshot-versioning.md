@@ -92,7 +92,31 @@ error semantics and actual HTTP compatibility validation against PR #4.
 Scheduled collection, real-source validation and live broker-to-indexer
 integration remain outstanding. No Indexer implementation is changed here.
 
-## Remaining open questions
+## Source-status decision (2026-11-04, Issue #14)
+
+The team agreed to separate confirmed content changes from uncertain freshness.
+The Collector exposes read-only `GET /sources/{source_id}/status` using the same
+`source_id`, `source_version` and `snapshot_id` names as its events. It records
+`detected_at` atomically with each changed version, snapshot and outbox insert.
+Unchanged successes only refresh check times and clear errors; failures retain
+the last confirmed version/detection and expose separate attempt/error state.
+
+An idempotent writer-side migration adds `sources.detected_at` and backfills
+only from the exact latest version's verifiable event `checked_at`. Unknown
+history stays null; a snapshot's first fetch or a later successful recheck is
+not substituted. HTTP readers never migrate or create stores. Both old snapshot
+and document-update event contracts remain unchanged.
+
+Emeka's Retrieval layer compares the per-source version actually used in
+evidence with Collector status: confirmed newer relevant sources trigger
+temporary abstention; unaffected sources continue. Fetch failure or Collector
+unreachability produces a freshness warning rather than inferring a change.
+Atomic index switching remains Kezhen's responsibility. No Collector `pending`
+flag is inferred from outbox delivery. See `docs/collector-source-status.md` for
+the wire contract, migration, failure semantics, alternatives and Week 10
+ADR-0003 handoff. ADR-0003 is not changed here.
+
+## Remaining follow-up decisions
 
 - Polling interval for the demo versus a realistic interval.
 - The staleness threshold before users see a notice.

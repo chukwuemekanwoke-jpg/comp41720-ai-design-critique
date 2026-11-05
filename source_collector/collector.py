@@ -26,6 +26,16 @@ def utc_now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+def parse_timestamp(value: str) -> datetime:
+    """Require an ISO-8601 timestamp with an explicit timezone."""
+    if not isinstance(value, str) or "T" not in value:
+        raise ValueError("Timestamp must be timezone-aware ISO-8601")
+    parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    if parsed.utcoffset() is None:
+        raise ValueError("Timestamp must include a timezone")
+    return parsed
+
+
 def check_official_url(url: str) -> None:
     parsed = urlparse(url)
     if (parsed.scheme != "https" or parsed.hostname not in OFFICIAL_HOSTS
@@ -85,7 +95,8 @@ SCHEMA = """
 CREATE TABLE IF NOT EXISTS sources (
   source_id TEXT PRIMARY KEY, url TEXT NOT NULL,
   last_attempt_at TEXT, last_success_at TEXT, last_error TEXT,
-  latest_hash TEXT, latest_snapshot_id TEXT, source_version INTEGER NOT NULL DEFAULT 0
+  latest_hash TEXT, latest_snapshot_id TEXT, source_version INTEGER NOT NULL DEFAULT 0,
+  detected_at TEXT
 );
 CREATE TABLE IF NOT EXISTS snapshots (
   snapshot_id TEXT PRIMARY KEY, source_id TEXT NOT NULL,
@@ -103,6 +114,41 @@ CREATE TABLE IF NOT EXISTS outbox (
 """
 
 
+def migrate_source_status(db: sqlite3.Connection) -> None:
+    """Idempotently upgrade existing stores; never infer detection from rechecks.
+
+    Called by the writer, not the read-only API. A write reservation serializes
+    concurrent startup migrations, including the column-existence check.
+    """
+    with db:
+        db.execute("BEGIN IMMEDIATE")
+        columns = {row[1] for row in db.execute("PRAGMA table_info(sources)")}
+        if "detected_at" not in columns:
+            db.execute("ALTER TABLE sources ADD COLUMN detected_at TEXT")
+        rows = db.execute("""SELECT s.source_id,s.source_version,s.latest_hash,
+            s.latest_snapshot_id,o.event_id,o.payload_json FROM sources s
+            JOIN outbox o ON o.source_id=s.source_id AND o.source_version=s.source_version
+            WHERE s.detected_at IS NULL AND s.source_version>0""").fetchall()
+        for row in rows:
+            source_id, version, digest, snapshot_id, event_id, payload_json = row
+            try:
+                payload = json.loads(payload_json)
+                expected = {"source_id": source_id, "source_version": version,
+                            "snapshot_id": snapshot_id, "content_sha256": digest,
+                            "event_id": f"{source_id}:{version}"}
+                if (not isinstance(payload, dict) or event_id != expected["event_id"]
+                        or type(payload.get("source_version")) is not int
+                        or any(payload.get(key) != value for key, value in expected.items())
+                        or snapshot_id != f"{source_id}:{digest}"):
+                    continue
+                detected_at = payload["checked_at"]
+                parse_timestamp(detected_at)
+            except (ValueError, TypeError, KeyError):
+                continue  # Unverifiable history stays explicitly unknown (NULL).
+            db.execute("UPDATE sources SET detected_at=? WHERE source_id=? AND detected_at IS NULL",
+                       (detected_at, source_id))
+
+
 class Collector:
     def __init__(self, db_path: str | Path):
         self.db_path = str(db_path)
@@ -110,6 +156,11 @@ class Collector:
         self.db.row_factory = sqlite3.Row
         self.db.execute("PRAGMA foreign_keys=ON")
         self.db.executescript(SCHEMA)
+        try:
+            migrate_source_status(self.db)
+        except Exception:
+            self.db.close()
+            raise
 
     def close(self) -> None:
         self.db.close()
@@ -118,7 +169,8 @@ class Collector:
         check_official_url(url)
         if not re.fullmatch(r"[A-Za-z0-9_-]{1,50}", source_id):
             raise ValueError("Unsafe source_id")
-        timestamp = at or utc_now()
+        timestamp = at if at is not None else utc_now()
+        parse_timestamp(timestamp)
         with self.db:
             self.db.execute("BEGIN IMMEDIATE")
             current = self.db.execute("SELECT url FROM sources WHERE source_id=?", (source_id,)).fetchone()
@@ -138,6 +190,10 @@ class Collector:
 
         digest = sha256(clean_text)
         snapshot_id = f"{source_id}:{digest}"
+        # Successful checks/detections are recorded after fetching and cleaning.
+        # An explicit `at` is a deterministic timestamp override for replay/tests.
+        timestamp = at if at is not None else utc_now()
+        parse_timestamp(timestamp)
         with self.db:
             self.db.execute("BEGIN IMMEDIATE") if not self.db.in_transaction else None
             state = self.db.execute("SELECT latest_hash,source_version FROM sources WHERE source_id=?", (source_id,)).fetchone()
@@ -155,8 +211,8 @@ class Collector:
                 self.db.execute("""INSERT INTO outbox(event_id,source_id,source_version,payload_json,created_at)
                     VALUES (?,?,?,?,?)""", (payload["event_id"], source_id, version, json.dumps(payload), timestamp))
                 self.db.execute("""UPDATE sources SET last_success_at=?,last_error=NULL,
-                    latest_hash=?,latest_snapshot_id=?,source_version=? WHERE source_id=?""",
-                    (timestamp, digest, snapshot_id, version, source_id))
+                    latest_hash=?,latest_snapshot_id=?,source_version=?,detected_at=? WHERE source_id=?""",
+                    (timestamp, digest, snapshot_id, version, timestamp, source_id))
             else:
                 version = state["source_version"]
                 self.db.execute("UPDATE sources SET last_success_at=?,last_error=NULL WHERE source_id=?", (timestamp, source_id))

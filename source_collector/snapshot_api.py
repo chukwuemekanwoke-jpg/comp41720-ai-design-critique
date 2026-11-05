@@ -7,14 +7,16 @@ import os
 from pathlib import Path
 import re
 import sqlite3
+from datetime import timezone
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
-from .collector import sha256
+from .collector import sha256, parse_timestamp
 
 
 SNAPSHOT_ID = re.compile(r"[A-Za-z0-9_-]{1,50}:[0-9a-f]{64}")
+SOURCE_ID = re.compile(r"[A-Za-z0-9_-]{1,50}")
 SNAPSHOT_COLUMNS = "snapshot_id,source_id,content_sha256,cleaner_version,clean_text"
 
 
@@ -24,6 +26,42 @@ class SnapshotResponse(BaseModel):
     content_sha256: str
     cleaner_version: str
     clean_text: str
+
+
+class SourceStatusResponse(BaseModel):
+    source_id: str
+    source_version: int
+    snapshot_id: str | None
+    detected_at: str | None
+    last_success_at: str | None
+    last_attempt_at: str | None
+    last_error: str | None
+
+
+def source_status_payload(row: sqlite3.Row) -> dict:
+    """Reject inconsistent confirmed state; expose only a safe error summary."""
+    source_id, version = row["source_id"], row["source_version"]
+    snapshot_id = row["latest_snapshot_id"]
+    if type(version) is not int or version < 0 or not SOURCE_ID.fullmatch(source_id):
+        raise ValueError("Invalid source identity/version")
+    if version == 0:
+        if any(row[key] is not None for key in
+               ("latest_hash", "latest_snapshot_id", "detected_at", "last_success_at")):
+            raise ValueError("Unconfirmed source has confirmed state")
+    elif (not snapshot_id or not SNAPSHOT_ID.fullmatch(snapshot_id)
+          or snapshot_id != f'{source_id}:{row["latest_hash"]}'
+          or row["snapshot_source_id"] != source_id
+          or row["snapshot_hash"] != row["latest_hash"]
+          or row["last_success_at"] is None or row["last_attempt_at"] is None):
+        raise ValueError("Confirmed source has inconsistent snapshot identity")
+    timestamps = {}
+    for field in ("detected_at", "last_success_at", "last_attempt_at"):
+        value = row[field]
+        timestamps[field] = (parse_timestamp(value).astimezone(timezone.utc).isoformat()
+                             if value is not None else None)
+    return {"source_id": source_id, "source_version": version, "snapshot_id": snapshot_id,
+            **timestamps, "last_error": "Latest source fetch or content extraction failed."
+            if row["last_error"] is not None else None}
 
 
 def open_readonly(db_path: Path) -> sqlite3.Connection:
@@ -68,6 +106,28 @@ def create_app(db_path: str | Path | None = None) -> FastAPI:
                 or sha256(payload["clean_text"]) != payload["content_sha256"]):
             raise HTTPException(500, "Snapshot integrity check failed")
         return payload
+
+    @app.get("/sources/{source_id}/status", response_model=SourceStatusResponse)
+    def get_source_status(source_id: str):
+        if not SOURCE_ID.fullmatch(source_id):
+            raise HTTPException(400, "Invalid source_id")
+        try:
+            with closing(open_readonly(app.state.db_path)) as connection:
+                # One SELECT gives a consistent view even during collection.
+                row = connection.execute("""SELECT s.source_id,s.source_version,
+                    s.latest_snapshot_id,s.latest_hash,s.detected_at,s.last_success_at,
+                    s.last_attempt_at,s.last_error,p.source_id AS snapshot_source_id,
+                    p.content_sha256 AS snapshot_hash FROM sources s
+                    LEFT JOIN snapshots p ON p.snapshot_id=s.latest_snapshot_id
+                    WHERE s.source_id=?""", (source_id,)).fetchone()
+        except sqlite3.Error:
+            raise HTTPException(503, "Source status store unavailable") from None
+        if row is None:
+            raise HTTPException(404, "Source not found")
+        try:
+            return source_status_payload(row)
+        except (ValueError, TypeError):
+            raise HTTPException(500, "Source status integrity check failed") from None
 
     return app
 

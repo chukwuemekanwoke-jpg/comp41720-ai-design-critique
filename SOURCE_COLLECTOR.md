@@ -1,6 +1,6 @@
-# StudentPath Source Collector — outbox relay milestone
+# StudentPath Source Collector — source status and snapshot handoff
 
-Scope: official ISD collection, immutable snapshots, change detection, SQLite transactional outbox, a separate RabbitMQ relay and a read-only snapshot HTTP API. Scheduling, live source validation and end-to-end RabbitMQ/Indexer integration remain future milestones.
+Scope: official ISD collection, immutable snapshots, change detection, SQLite transactional outbox, a separate RabbitMQ relay and read-only snapshot/source-status HTTP APIs. Scheduling, live source validation and end-to-end RabbitMQ/Indexer integration remain future milestones.
 
 ## Setup
 
@@ -16,6 +16,13 @@ For all project tests, install `requirements-dev.txt`. To serve stored snapshots
 run `python -m source_collector.snapshot_api --db collector.sqlite3`. The default
 base URL is `http://127.0.0.1:8001`.
 See [Snapshot API setup and contract](docs/collector-snapshot-api.md).
+
+`GET /sources/{source_id}/status` adds the latest confirmed per-source version,
+snapshot, durable `detected_at` and separate fetch-health fields. For an existing
+store, first run `python -m source_collector.migrate --db collector.sqlite3` (or
+start the updated Collector writer). Read-only API requests never migrate.
+See [Source Status API, migration and Retrieval handoff](docs/collector-source-status.md).
+The existing event and snapshot response contracts remain unchanged.
 
 ## RabbitMQ demonstration (PowerShell)
 
