@@ -144,3 +144,26 @@
   is rejected by current models, as documented. Example reason, versions, URLs,
   timestamps and refusal semantics match across the handover. `git diff --check`
   passed. No full suite rerun for these documentation-only clarifications.
+
+## 2026-11-05 - Provisional Answer-side abstention implementation
+
+- Added optional `abstention` input, strict pending-source types and validation
+  against supplied source IDs, versions and canonical URLs.
+- Added a response path before model generation. It returns the fixed proposed
+  explanation, affected-source URLs and original detection dates. Unknown dates
+  remain null. It makes no model call in either configured generation mode.
+- Malformed handovers return HTTP 400. Normal requests retain existing behaviour
+  and omit the new response field, including preservation of required null fields.
+- Added `data/answer_abstention_demo.json` and 40 API/validation cases.
+- New abstention suite: 40 passed. Full suite: 318 passed, 4 optional integration
+  cases skipped, 1 existing TestClient warning. `git diff --check` passed before
+  documentation updates.
+- Automated tests use in-process API calls and mocked model transport.
+- Jordan supplied a manual API response matching the pending-update example:
+  `insufficient_evidence`, null answer, `policy-response` metadata, the expected
+  explanation and original source/version/detection details. This checks the
+  direct endpoint; it is not a Gateway/frontend or live-model demonstration.
+- Gateway, Retrieval, frontend and shared OpenAPI schemas remain unchanged.
+  The pending-update response requires coordinated consumer/schema changes.
+- Field names, fixed-message policy and metadata remain provisional until review.
+  Local changes are not committed or pushed to PR #20 at this checkpoint.

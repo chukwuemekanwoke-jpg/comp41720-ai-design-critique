@@ -1,8 +1,9 @@
 # Proposed pending-update handover to the Answer Service
 
 Date: 2026-11-05. Owner: Jordan Hennessy.  
-Status: proposal for Jordan and Emeka to review. No runtime or OpenAPI changes
-are made by this document. The examples below are not accepted by current APIs.
+Status: proposal for Jordan and Emeka to review. This task branch now contains
+a provisional Answer-only implementation. Main and the shared OpenAPI contracts
+are unchanged; the current Gateway does not accept the new response yet.
 
 Related proposal: [PR #19, ADR-0003](https://github.com/chukwuemekanwoke-jpg/comp41720-ai-design-critique/pull/19).
 
@@ -14,6 +15,42 @@ which relevant evidence is affected by a confirmed source update.
 
 The field names, validation, response wording and model behaviour below are
 proposals.
+
+## Local implementation checkpoint
+
+On `feature/answer-abstention`, the request/response examples below are supported
+by a provisional implementation in `answer_service/models.py` and `service.py`.
+This is preparation for review, not an agreed cross-service release.
+
+Tests exercise the real Answer API in-process with a model transport that fails
+the test if called on the refusal path. There are 40 new cases. On 2026-11-05,
+the full local suite reported **318 passed, 4 optional integration checks skipped**,
+with the existing TestClient deprecation warning. This is not a live browser,
+Ollama, broker or Gateway pending-update integration demonstration.
+
+Jordan also supplied a manual direct-API response matching this example,
+including the fixed explanation and original source/version/detection details.
+No Gateway/frontend pending-update integration is claimed by that check.
+
+To try the request directly, run the Answer Service from this branch and use
+`data/answer_abstention_demo.json` in its `/docs` page. Or, from a second terminal:
+
+```bash
+curl -sS http://127.0.0.1:8003/v1/answers \
+  -H 'Content-Type: application/json' \
+  -H 'X-Request-ID: pending-update-example-1' \
+  --data-binary @data/answer_abstention_demo.json
+```
+
+Start the service with:
+
+```bash
+.venv/bin/python -m uvicorn answer_service.app:app --host 127.0.0.1 --port 8003 --reload
+```
+
+Port 8003 matches the current Gateway's default Answer address; Retrieval uses
+8002. Earlier development examples used 8002 for Answer before integration.
+The explicit handover behaves the same in Ollama and evidence-only modes.
 
 In plain language:
 
@@ -210,4 +247,4 @@ this decision; Answer obeys only an explicit handover.
 - Emeka: confirm the Retrieval handover shape, warning path for unknown
   freshness, and frontend display. This proposal covers confirmed pending updates only.
 - Agree a coordinated schema version/migration before treating the extension
-  as an approved contract. Current schemas remain unchanged by this draft.
+  as an approved contract. Formal shared schemas remain unchanged by this draft.
