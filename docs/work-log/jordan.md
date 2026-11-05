@@ -108,3 +108,22 @@
 - Experimental defaults and ADR-0004 remain proposed for Jordan/team review.
 - Jordan to try Ollama mode through the browser and review the adapter code
   before committing. Changes remain on the existing feature branch.
+
+## 2026-11-05 - Pending-update handover proposal
+
+- Updated local main to `cde9109`; current Python baseline: 278 passed,
+  4 optional integration tests skipped, 1 existing TestClient warning.
+- Reviewed the supplied group chat, submitted proposal, lecturer feedback and
+  PR #19's proposed stale-source refusal policy. No GitHub review/approval was
+  submitted by the assistant.
+- Emeka's response supplied by Jordan confirms Gateway should pass the decision
+  to Answer so Answer constructs the response. It does not specify model usage
+  or the wire fields.
+- Working branch created by Jordan: `feature/answer-abstention`.
+- Drafted [the handover proposal](../answer-abstention-handoff.md): optional
+  explicit decision, affected source versions/detection dates, structured refusal
+  and coordinated Gateway/schema/frontend changes.
+- Fixed-template/no-Ollama behaviour and field names are proposals awaiting
+  owner review; no runtime or OpenAPI implementation changed in this step.
+- Next: Jordan reads the request/response examples and agrees the proposal with
+  Emeka before implementing the shared handover.
