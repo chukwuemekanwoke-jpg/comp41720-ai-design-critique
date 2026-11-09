@@ -26,12 +26,16 @@ and a pinned version stays readable after a newer one is activated.
 (`GET /sources/{source_id}/status`) and caches it. A source has a *pending
 change* when the Collector's `source_version` is greater than that source's
 version in the generation being read. If any passage that would go to the
-Answer service comes from such a source, the request abstains:
+Answer service comes from such a source, the request abstains. Questions whose
+evidence comes only from unaffected sources answer normally.
 
-> "The official page *[title]* changed on *[detected_at]* and the update is being
-> processed. Check the page directly or ask again shortly."
-
-Questions whose evidence comes only from unaffected sources answer normally.
+The abstention is a handover, not a shortcut. Retrieval reports the affected
+sources; the Gateway passes an `abstention` decision (reason
+`pending_source_update`, with each source's indexed and latest versions and
+`detected_at`) to the Answer service; the Answer service builds the refusal
+without calling the model, so outdated passages are never turned into advice.
+The response carries a fixed explanation and names each affected page and the
+date its change was detected, so the user knows which official page to check.
 
 **3. Fetch errors are not changes.** A source that cannot be fetched is stale,
 not changed. It gets the ADR-0001 staleness notice and does not abstain.
@@ -58,7 +62,9 @@ dead-lettered. Abstention continues until it is indexed.
 
 ## Consequences
 
-- Gateway and Answer responses need a reason field for this abstention.
+- The Answer side of the handover is implemented (#20). The shared Answer and
+  Gateway contracts, the Gateway forwarding and the frontend display still need
+  the `abstention` field.
 - Each page edit makes that page's questions abstain until indexed. A cleaner
   change alters every hash, so all sources go pending at once; schedule cleaner
   changes away from demonstrations.
@@ -77,4 +83,3 @@ dead-lettered. Abstention continues until it is indexed.
 
 - A bulk status endpoint, so one poll returns every source consistently.
 - Final poll interval, cache limit and stuck-update threshold.
-- The abstention reason's name in the Gateway contract.
