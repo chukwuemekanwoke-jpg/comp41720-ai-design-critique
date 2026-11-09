@@ -1,0 +1,25 @@
+{
+  "question": "What does the fictional application require?",
+  "sources": [
+    {
+      "source_id": "SYN001",
+      "snapshot_id": "SYN001:fixture-v1",
+      "source_version": 1,
+      "url": "https://example.org/synthetic-guidance",
+      "passage": "Synthetic test only: the fictional application requires a blue form."
+    }
+  ],
+  "index_version": "synthetic-index-1",
+  "last_success_at": "2026-11-04T09:00:00+00:00",
+  "abstention": {
+    "reason": "pending_source_update",
+    "affected_sources": [
+      {
+        "source_id": "SYN001",
+        "indexed_source_version": 1,
+        "latest_source_version": 2,
+        "detected_at": "2026-11-05T09:00:00+00:00"
+      }
+    ]
+  }
+}
