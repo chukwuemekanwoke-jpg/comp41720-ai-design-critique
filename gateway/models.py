@@ -60,11 +60,30 @@ class Passage(ContractModel):
                       source_version=self.source_version, url=self.url, passage=self.text)
 
 
+class PendingSource(ContractModel):
+    """A retrieved source whose detected change is not yet indexed (ADR-0003)."""
+    source_id: Identifier
+    indexed_source_version: int = Field(gt=0)
+    latest_source_version: int = Field(gt=0)
+    detected_at: str | None = Field(max_length=64)
+
+    @model_validator(mode="after")
+    def newer_version(self):
+        if self.latest_source_version <= self.indexed_source_version:
+            raise ValueError("A pending source must have a newer latest version")
+        if self.detected_at is not None:
+            timestamp(self.detected_at)
+        return self
+
+
 class RetrievalOut(ContractModel):
     request_id: str
     index_version: Annotated[str, StringConstraints(min_length=1, max_length=128)]
     last_success_at: str = Field(max_length=64)
     passages: list[Passage] = Field(max_length=5)
+    pending_sources: list[PendingSource] = Field(default_factory=list, max_length=5)
+    # An older Retrieval that does not report freshness is treated as unconfirmed.
+    freshness_confirmed: bool = False
 
     @field_validator("last_success_at")
     @classmethod
@@ -86,6 +105,16 @@ class RetrievalOut(ContractModel):
         return self
 
 
+class AffectedSource(PendingSource):
+    url: str = Field(min_length=1, max_length=2048)
+
+
+class AbstentionOut(ContractModel):
+    reason: Literal["pending_source_update"]
+    message: str = Field(min_length=1)
+    affected_sources: list[AffectedSource] = Field(min_length=1, max_length=10)
+
+
 class ModelInfo(ContractModel):
     name: str = Field(min_length=1)
     prompt_version: str = Field(min_length=1)
@@ -102,11 +131,14 @@ class AnswerOut(ContractModel):
     fallback_used: bool
     model: ModelInfo
     notice: str = NOTICE
+    abstention: AbstentionOut | None = None
 
     @model_validator(mode="after")
     def coherent_status(self):
         if self.notice != NOTICE:
             raise ValueError("Unexpected notice")
+        if self.abstention is not None and self.status != "insufficient_evidence":
+            raise ValueError("A pending-update abstention must be a refusal")
         if self.last_success_at is not None:
             timestamp(self.last_success_at)
         if self.status == "answered":
