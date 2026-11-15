@@ -68,16 +68,24 @@ connection errors and confirmation timeouts leave the row pending. Only a
 confirmed publication changes `status` to `published` and sets `published_at`.
 `attempts` counts committed attempts; attempts interrupted by crashes roll back.
 
-For this small SQLite prototype, each event is selected under `BEGIN IMMEDIATE`
-and the write reservation remains held through publication and the status commit.
-Competing relays therefore cannot select the in-flight event. Locks are released
-by rollback or process death without lease expiry or stranded claims. This also
-briefly blocks collector writes: one event at a time and bounded broker waits
-limit the contention. SQLite lock waits default to 10 seconds; continuous mode
-retries a busy database. Use a local filesystem, not a network shared SQLite DB.
-Higher throughput should replace this with a carefully fenced lease design or
-a server database. Each publish uses a fresh connection, favouring simple
-recovery over throughput.
+Relays serialize each delivery with `BEGIN IMMEDIATE` on an adjacent
+`<db>.relay-lock.sqlite3` file. The lock spans selection, broker I/O and the
+status commit. The Collector database is only written after the broker call
+returns, so its writers do not wait for connection, confirmation or shutdown.
+The attempt count and confirmed status commit together on success; failures
+record an attempt and leave the event pending. Process death releases the
+relay lock without a lease or a stranded claim.
+
+Both SQLite connections default to a 10-second busy timeout per lock wait.
+Continuous mode retries after a SQLite error using the configured interval.
+Broker timing controls are separate: connection/stack and confirmation timers
+cover different phases and are not a single wall-clock bound on a publish.
+A stuck publisher can delay other relays, but cannot hold the Collector DB
+write reservation. Use one local filesystem and the same resolved database path
+for all relays; the directory must allow creation of the adjacent lock file.
+Do not remove or replace the lock file or alias the database with hard links
+while relays are running. Stop old relay processes before restarting on the new
+code because the two versions use different locks.
 
 Broker confirmation is not a consumer acknowledgement. A crash or database
 failure after confirmation but before the SQLite commit causes redelivery with
