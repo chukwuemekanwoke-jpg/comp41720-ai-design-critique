@@ -2,7 +2,13 @@
 
 import logging
 
-from answer_service.models import AnswerRequest, AnswerResponse, ModelInfo
+from answer_service.models import (
+    AbstentionResponse,
+    AffectedSourceDetail,
+    AnswerRequest,
+    AnswerResponse,
+    ModelInfo,
+)
 from answer_service.ollama import GenerationFailure, OllamaAdapter, PROMPT_VERSION
 
 
@@ -12,6 +18,29 @@ logger = logging.getLogger(__name__)
 async def build_answer(
     payload: AnswerRequest, request_id: str, generator: OllamaAdapter | None
 ) -> AnswerResponse:
+    if payload.abstention is not None:
+        # The decision is made upstream. Never turn these passages into advice.
+        source_urls = {source.source_id: source.url for source in payload.sources}
+        return AnswerResponse(
+            request_id=request_id,
+            status="insufficient_evidence",
+            answer=None,
+            checklist=[],
+            sources=[],
+            index_version=payload.index_version,
+            last_success_at=payload.last_success_at,
+            fallback_used=False,
+            model=ModelInfo(name="policy-response", prompt_version="none"),
+            abstention=AbstentionResponse(
+                reason=payload.abstention.reason,
+                affected_sources=[
+                    AffectedSourceDetail(
+                        **source.model_dump(), url=source_urls[source.source_id]
+                    )
+                    for source in payload.abstention.affected_sources
+                ],
+            ),
+        )
     has_evidence = bool(payload.sources)
     if has_evidence and generator is not None:
         try:

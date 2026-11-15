@@ -3,6 +3,11 @@
 Owner: Jordan Hennessy. Status: evidence-only API and opt-in Ollama generation
 implemented locally; integration contract proposed for team review.
 
+On the `feature/answer-abstention` task branch, a provisional pending-update
+handover also returns a fixed refusal before model generation. See the
+[handover proposal and local checks](answer-abstention-handoff.md). The shared
+OpenAPI contracts and Gateway are not yet updated for this response.
+
 ## Implemented milestones
 
 Provide an independently runnable API that accepts retrieved evidence and
