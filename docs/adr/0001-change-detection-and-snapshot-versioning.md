@@ -71,10 +71,11 @@ The collector and separate SQLite outbox relay are implemented in
 `source_collector/`. RabbitMQ is the provisional broker, consistent with the
 draft architecture; the team still needs to agree its queue contract. The relay
 uses a durable queue, persistent mandatory messages and publisher confirms.
-It marks published only after confirmation. An event-level SQLite write
-reservation serializes competing relays, at the cost of blocking collector
-writes during bounded broker operations. Crashes release the lock and roll back
-the mark, so retries can duplicate confirmed events. No exactly-once guarantee
+It marks published only after confirmation. A write reservation on a separate
+local SQLite lock file serializes competing relays through publication and the
+status commit. Broker operations hold no transaction on the Collector database.
+Crashes release the lock; if the status did not commit, retries can duplicate
+confirmed events. No exactly-once guarantee
 is made. Failed publications remain pending and continuous mode retries after a
 configurable fixed delay. See `SOURCE_COLLECTOR.md` for configuration, tests and
 the snapshot-reversion coordination issue with ADR-0002.

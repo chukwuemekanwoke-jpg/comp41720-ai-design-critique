@@ -1,5 +1,8 @@
 import json
 import sqlite3
+from concurrent.futures import ThreadPoolExecutor
+from contextlib import closing
+from threading import Event
 from unittest.mock import Mock
 
 import pytest
@@ -107,6 +110,52 @@ def test_concurrent_relay_cannot_claim_in_flight_event(database):
     finally:
         first.close()
         second.close()
+
+
+@pytest.mark.parametrize("broker_error", [None, TimeoutError])
+def test_collector_can_commit_while_relay_waits_for_broker(database, broker_error):
+    publishing = Event()
+    release = Event()
+
+    def publish(body, event_id):
+        publishing.set()
+        if not release.wait(5):
+            raise RuntimeError("Test did not release publisher")
+        if broker_error:
+            raise broker_error("simulated confirmation timeout")
+
+    def run_relay():
+        with closing(OutboxRelay(database, Mock(publish=publish))) as relay:
+            return relay.run_once(limit=1)
+
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        result = pool.submit(run_relay)
+        try:
+            assert publishing.wait(5)
+            # Fail fast if the relay reserves the actual Collector database.
+            with closing(sqlite3.connect(database, timeout=0)) as probe:
+                probe.execute("BEGIN IMMEDIATE")
+                probe.rollback()
+            with closing(Collector(database)) as collector:
+                collector.db.execute("PRAGMA busy_timeout=0")
+                outcome = collector.collect("S001", "https://www.irishimmigration.ie/test/",
+                                            lambda _: "<main><p>Third version</p></main>")
+                assert outcome["source_version"] == 3
+                assert {e["event_id"] for e in collector.pending_events()} == {
+                    "S001:1", "S001:2", "S001:3",
+                }
+        finally:
+            release.set()
+        assert result.result(timeout=5)["failed"] == int(broker_error is not None)
+
+    publisher = Mock()
+    with closing(OutboxRelay(database, publisher, lock_timeout=0)) as relay:
+        expected = ["S001:2", "S001:3"]
+        if broker_error:
+            expected.insert(0, "S001:1")
+        assert relay.run_once() == {"published": len(expected), "failed": 0}
+        assert [call.args[1] for call in publisher.publish.call_args_list] == expected
+        assert relay.db.execute("SELECT COUNT(*) FROM outbox WHERE status='published'").fetchone()[0] == 3
 
 
 def test_rabbit_adapter_uses_confirms_persistence_and_mandatory(monkeypatch):
