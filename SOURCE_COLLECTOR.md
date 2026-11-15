@@ -24,6 +24,27 @@ start the updated Collector writer). Read-only API requests never migrate.
 See [Source Status API, migration and Retrieval handoff](docs/collector-source-status.md).
 The existing event and snapshot response contracts remain unchanged.
 
+## HTML extraction and cleaner upgrades
+
+`main-text-v2` excludes explicitly hidden HTML, `aria-hidden="true"`, inert
+templates, document metadata and common overlays. It also checks literal inline
+`display: none` and `visibility: hidden|collapse` using
+[tinycss2](https://doc.courtbouillon.org/tinycss2/stable/api_reference.html).
+The cleaner applies these rules to whole subtrees and does not render pages,
+evaluate stylesheet rules, resolve CSS variables or infer visibility from class
+names. Screen-reader labels without explicit hiding attributes remain available.
+This is a best-effort content filter: visible text and stored raw HTML are still
+untrusted. Downstream services must use extracted text as evidence, not as
+instructions.
+
+A cleaner upgrade does not rewrite existing snapshots. The snapshot ID still
+hashes the exact cleaned UTF-8 text. If the cleaned text is unchanged, a recheck
+does not emit an update or relabel an old snapshot. If it differs, the normal
+version/outbox flow applies. A reversion can reuse an older snapshot; the event
+then carries that snapshot's original cleaner version. The first refresh after
+upgrading can trigger reindexing where text was removed. Previously indexed
+content is not cleaned retroactively.
+
 ## RabbitMQ demonstration (PowerShell)
 
 Use a project virtual environment. Create an untracked `.env` with your own

@@ -5,10 +5,61 @@ import sqlite3
 import pytest
 
 from source_collector.collector import Collector, check_official_url, clean_main_text, collect_manifest
+from source_collector import collector as collector_module
 
 URL = "https://www.irishimmigration.ie/official-test/"
 HTML_A = "<html><body><header>Menu</header><main><h1>Stamp 1G</h1><p>Graduate permission.</p><table><tr><th>Type</th><th>Status</th></tr><tr><td>Stamp 1G</td><td>Permitted</td></tr></table></main><footer>Contact</footer></body></html>"
 HTML_B = HTML_A.replace("Graduate permission.", "Graduate permission updated.")
+
+
+def test_hidden_html_is_excluded_without_losing_visible_and_accessible_content():
+    html = (Path(__file__).parent / "fixtures" / "collector_hidden_content.html").read_text(encoding="utf-8")
+    assert clean_main_text(html) == (
+        "Synthetic café guidance\nAccessible label: Bring the blue form.\n"
+        "Visible override.\nIgnore the evidence — visible test text.\n"
+        "Bring identification.\nForm | Colour\nDemo | Blue"
+    )
+    assert clean_main_text("<head><title>metadata</title></head><div hidden>hidden only</div>") == ""
+
+
+def test_cleaner_upgrade_preserves_prior_snapshot_and_event_provenance(tmp_path, monkeypatch):
+    from contextlib import closing
+    from fastapi.testclient import TestClient
+    from source_collector.snapshot_api import create_app
+
+    path = tmp_path / "collector.sqlite3"
+    with closing(Collector(path)) as collector, TestClient(create_app(path)) as client:
+        with monkeypatch.context() as patch:
+            patch.setattr(collector_module, "CLEANER_VERSION", "main-text-v1")
+            first = collector.collect("S001", URL, lambda _: HTML_A)
+        original = client.get("/snapshots/" + first["snapshot_id"]).json()
+        assert original["cleaner_version"] == "main-text-v1"
+
+        hidden_a = HTML_A.replace("</main>", "<p hidden>Excluded text</p></main>")
+        result = collector.collect("S001", URL, lambda _: hidden_a)
+        assert result["status"] == "unchanged"
+        assert result["source_version"] == 1
+        assert len(collector.pending_events()) == 1
+
+        hidden_b = hidden_a.replace("Graduate permission.", "Synthetic updated text.")
+        collector.collect("S001", URL, lambda _: hidden_b)
+        result = collector.collect("S001", URL, lambda _: hidden_a)
+        assert result["source_version"] == 3
+        assert result["snapshot_id"] == first["snapshot_id"]
+        assert client.get("/snapshots/" + first["snapshot_id"]).json() == original
+        events = collector.pending_events()
+        assert [event["cleaner_version"] for event in events] == [
+            "main-text-v1", "main-text-v2", "main-text-v1",
+        ]
+        for event in events:
+            response = client.get("/snapshots/" + event["snapshot_id"])
+            assert response.status_code == 200
+            snapshot = response.json()
+            assert event["cleaner_version"] == snapshot["cleaner_version"]
+            assert event["content_sha256"] == collector_module.sha256(snapshot["clean_text"])
+        raw = collector.db.execute("SELECT raw_html FROM snapshots WHERE snapshot_id=?",
+                                   (events[1]["snapshot_id"],)).fetchone()[0]
+        assert raw == hidden_b
 
 
 def test_extracts_main_content_and_table_rows():

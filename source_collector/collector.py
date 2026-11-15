@@ -16,8 +16,9 @@ from urllib.parse import urlparse
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 
 from bs4 import BeautifulSoup
+from tinycss2 import parse_blocks_contents
 
-CLEANER_VERSION = "main-text-v1"
+CLEANER_VERSION = "main-text-v2"
 OFFICIAL_HOSTS = frozenset({"www.irishimmigration.ie", "irishimmigration.ie"})
 MAX_HTML_BYTES = 2 * 1024 * 1024
 
@@ -63,12 +64,39 @@ def fetch_official_html(url: str) -> str:
         return payload.decode(charset, errors="replace")
 
 
+NON_CONTENT = frozenset({
+    "head", "script", "style", "template", "noscript", "nav", "footer",
+    "header", "aside", "form", "iframe",
+})
+
+
+def inline_hidden(style: str) -> bool:
+    """Recognize literal hiding declarations without rendering or fetching CSS."""
+    effective = {}
+    for item in parse_blocks_contents(style, skip_comments=True, skip_whitespace=True):
+        if item.type != "declaration" or item.lower_name not in {"display", "visibility"}:
+            continue
+        if effective.get(item.lower_name, (None, False))[1] and not item.important:
+            continue
+        values = [token for token in item.value if token.type not in {"comment", "whitespace"}]
+        value = values[0].lower_value if len(values) == 1 and values[0].type == "ident" else None
+        effective[item.lower_name] = (value, item.important)
+    return (effective.get("display", (None,))[0] == "none"
+            or effective.get("visibility", (None,))[0] in {"hidden", "collapse"})
+
+
 def clean_main_text(html: str) -> str:
     soup = BeautifulSoup(html, "html.parser")
-    for node in soup(["script", "style", "noscript", "nav", "footer", "header", "aside", "form", "iframe"]):
-        node.decompose()
-    for node in list(soup.select('[id*="cookie" i], [class*="cookie" i], [class*="newsletter" i]')):
-        node.decompose()
+    overlays = {id(node) for node in soup.select(
+        '[id*="cookie" i], [class*="cookie" i], [class*="newsletter" i]'
+    )}
+    for node in soup.find_all(True):
+        if node.decomposed:  # An excluded ancestor already removed this node.
+            continue
+        if (node.name in NON_CONTENT or id(node) in overlays or node.has_attr("hidden")
+                or node.get("aria-hidden", "").strip().lower() == "true"
+                or (node.has_attr("style") and inline_hidden(node["style"]))):
+            node.decompose()
     main = soup.select_one("main") or soup.select_one("article") or soup.select_one(".entry-content") or soup.body or soup
     parts: list[str] = []
     for node in main.find_all(["h1", "h2", "h3", "h4", "p", "li", "tr"]):
@@ -204,10 +232,15 @@ class Collector:
                     (snapshot_id,source_id,content_sha256,cleaner_version,raw_html,clean_text,first_fetched_at)
                     VALUES (?,?,?,?,?,?,?)""",
                     (snapshot_id, source_id, digest, CLEANER_VERSION, html, clean_text, timestamp))
+                # A reversion can reuse content first stored by an older cleaner.
+                # The event must match the immutable snapshot's provenance.
+                stored_cleaner = self.db.execute(
+                    "SELECT cleaner_version FROM snapshots WHERE snapshot_id=?", (snapshot_id,)
+                ).fetchone()["cleaner_version"]
                 payload = {"event_id": f"{source_id}:{version}", "source_id": source_id,
                            "source_version": version, "snapshot_id": snapshot_id,
                            "content_sha256": digest, "source_url": url,
-                           "checked_at": timestamp, "cleaner_version": CLEANER_VERSION}
+                           "checked_at": timestamp, "cleaner_version": stored_cleaner}
                 self.db.execute("""INSERT INTO outbox(event_id,source_id,source_version,payload_json,created_at)
                     VALUES (?,?,?,?,?)""", (payload["event_id"], source_id, version, json.dumps(payload), timestamp))
                 self.db.execute("""UPDATE sources SET last_success_at=?,last_error=NULL,
