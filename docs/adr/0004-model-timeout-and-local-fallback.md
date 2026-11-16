@@ -1,51 +1,53 @@
-# ADR-0004: Model timeout and local fallback
+# ADR-0004: Bounded model attempts and evidence-only fallback
 
-- **Status:** Draft (proposed)
-- **Service:** Answer service
+- **Status:** Proposed (resilience implementation awaiting review)
+- **Service:** Answer Service
 - **Owner:** Jordan Hennessy
-- **Date:** 2026-10-17
+- **Updated:** 2026-11-16
 
 ## Context
 
-The answer service sends retrieved passages to a language model and returns an
-explanation with sources. The model call is the slowest and least reliable step.
-The brief requires one-command startup, local or free infrastructure, offline
-fallbacks for dependencies, capped generation, and recovery from injected model
-timeouts with retry limits.
+Local Ollama generation can fail, stall or return invalid output. StudentPath
+must bound waiting and preserve retrieved evidence. Unlimited retries or queued
+generation can overwhelm student hardware and exceed Gateway's Answer deadline.
 
-## Options considered
+## Decision
 
-1. **Single hosted model, fail on error.** Simple, but a timeout or missing key
-   breaks the demo.
-2. **Retry indefinitely.** Hides failure and can pile up requests.
-3. **Bounded retries, then a local or simulated fallback.** Degrades
-   predictably and keeps the demo runnable offline.
+Use one total generation deadline (default 20 seconds, below Gateway's 23-second
+Answer deadline), including retries and backoff. Default to two attempts for
+connection failures and HTTP 500/502/503/504, with 0.2-second initial exponential
+backoff. Do not retry HTTP 429, read/write timeouts, invalid output or valid
+refusals. A timed-out request may still be running in Ollama.
 
-## Decision (proposed)
+Use a per-process, fail-fast bulkhead (one admitted generation by default).
+Excess requests fall back without queueing. Release admission after completion,
+failure, cancellation or deadline. This is not a circuit breaker and does not
+guarantee cancelled server-side GPU work stops; multiple workers multiply the
+limit. Keep the local demo to one worker.
 
-Call the primary model with a hard timeout and a small, fixed number of retries
-with backoff. If it still fails, switch to a local or simulated model behind the
-same interface. A circuit breaker stops calling the primary for a cool-down
-period after repeated failures. Generation length is capped per request.
+On generation failure or overload, return `degraded`, null answer and original
+evidence/provenance with `fallback_used=true`. Empty evidence or an explicit
+pending-update handover bypasses generation; the latter returns a fixed policy
+explanation. Preserve request ID, model/prompt labels, index version and freshness.
+Output is capped at 256 tokens; input is character-bounded, not exactly tokenized.
 
-The fallback must still ground the answer. It returns the best-matching passages
-with their source links and the version and `last_success_at` date, labelled as a
-reduced answer (retrieved evidence without generated explanation). If there is
-no sufficient evidence, the service says so and does not guess.
+## Alternatives and consequences
 
-Prompt and model identifiers are recorded with every response so the version
-metadata in the brief is complete.
+Failing the request hides usable evidence. A second model adds resource use and
+another dependency. Retrying all errors can duplicate expensive generation or
+repeat malformed output. Bounded retries recover some transient failures; the
+bulkhead protects client resources but sacrifices generated answers under load.
+Evidence-only fallback retains sources while reducing usefulness. Citation
+validation does not prove factual support. A circuit breaker remains an option
+if measurements show repeated failures justify a cool-down period.
 
-## Consequences
+## Evidence and reconsideration
 
-- A model timeout produces a visible, labelled degraded answer, not an error.
-- The demo can inject a timeout and show retries, the breaker opening, and the
-  fallback taking over.
-- The simulated model is not the real quality bar, so evaluation results must
-  state which model produced them.
-- Token usage and cost are capped and exported as metrics.
-
-## Open questions
-
-- Timeout, retry count and cool-down values.
-- Which local model, if any, is practical on student hardware.
+Twenty-one mocked failure/recovery and configuration tests pass, including
+retry exhaustion, shared deadline, overload rejection and cancellation recovery.
+Full branch suite: 340 passed, 6 optional cases skipped, one existing warning.
+See `tests/test_answer_resilience.py`. The real local model also passed supported, unrelated-evidence, missing-model
+and injected-503 recovery smoke checks; see
+`docs/answer-resilience-checks-2026-11-16.md`. Repeated live evaluation, exported
+metrics and usage accounting remain follow-up work. Revisit defaults using
+repeated trials on team hardware; any retry must share the Gateway deadline.

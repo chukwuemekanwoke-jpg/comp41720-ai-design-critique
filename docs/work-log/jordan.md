@@ -167,3 +167,38 @@
   The pending-update response requires coordinated consumer/schema changes.
 - Field names, fixed-message policy and metadata remain provisional until review.
   Local changes are not committed or pushed to PR #20 at this checkpoint.
+
+
+## 2026-11-16 - Bounded model retries and concurrency
+
+- Separate branch: `feature/answer-resilience`, based on main `6ab7007`.
+- Added at most two attempts by default for connection failures and transient
+  server errors, with exponential backoff inside the existing total deadline.
+- No retry for overload HTTP 429, other client errors, read/write timeouts,
+  invalid model output or valid refusals.
+- Added a fail-fast per-process bulkhead, default capacity one. Busy requests
+  preserve evidence via the existing degraded response; no generation queue.
+- Tests exercise recovery, exhausted retries, terminal errors, deadline during
+  backoff, concurrency rejection and capacity release after cancellation.
+- New tests: 21 passed. Full suite: 340 passed, 5 optional cases skipped,
+  existing TestClient warning. The Collector demo requires local socket access;
+  rerunning with that access passed after the initial permission-limited run.
+- Updated service settings/run notes and ADR-0004 for review. Existing Drive ADR
+  still describes merged behaviour; update it after agreement on this change.
+- No public API schema, dependency or Gateway changes. No live Ollama throughput
+  or recovery measurements claimed. Work remains uncommitted for review.
+
+### Live-model verification
+
+- Installed local `llama3.2:3b` answered the supported synthetic fixture and
+  refused unrelated evidence; a deliberately missing tag returned evidence-only
+  fallback. All three opt-in cases passed.
+- Added and passed an opt-in recovery case: inject two HTTP 503 failures, verify
+  fallback after the configured attempts, then forward the next request to real
+  Ollama and verify an answer. This does not stop/restart the model process.
+- Recorded exact scope, commands, single-run observations and limitations in
+  `docs/answer-resilience-checks-2026-11-16.md`. Mocked concurrency and cancellation
+  tests remain separate from live-model evidence. No quality benchmark claimed.
+
+- Final default suite after adding the opt-in recovery test: 340 passed,
+  6 skipped (four model checks and two broker checks), one existing warning.
