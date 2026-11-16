@@ -1,0 +1,91 @@
+name: studentpath-pending-demo
+x-python: &python
+  image: studentpath-pending-demo:local
+  build:
+    context: .
+    dockerfile: Dockerfile.check
+  init: true
+services:
+  rabbitmq:
+    image: rabbitmq:4-management
+    hostname: rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: demo
+      RABBITMQ_DEFAULT_PASS: local-demo-only
+    volumes: [broker:/var/lib/rabbitmq]
+    healthcheck:
+      test: [CMD, rabbitmq-diagnostics, -q, check_port_connectivity]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+  seed:
+    <<: *python
+    command: [python, -m, scripts.demo_pending_update, seed]
+    volumes: [collector:/state]
+  collector:
+    <<: *python
+    command: [python, -m, uvicorn, source_collector.snapshot_api:app, --host, 0.0.0.0, --port, '8001']
+    environment:
+      COLLECTOR_DB: /state/collector.sqlite3
+    volumes: [collector:/state]
+    depends_on:
+      seed: {condition: service_completed_successfully}
+  relay:
+    <<: *python
+    command: [python, -m, source_collector.relay]
+    restart: unless-stopped
+    environment:
+      COLLECTOR_DB: /state/collector.sqlite3
+      RABBITMQ_URL: amqp://demo:local-demo-only@rabbitmq:5672/%2F
+      RABBITMQ_QUEUE: studentpath.pending.demo
+      RELAY_RETRY_SECONDS: '2'
+    volumes: [collector:/state]
+    depends_on:
+      seed: {condition: service_completed_successfully}
+      rabbitmq: {condition: service_healthy}
+  indexer:
+    <<: *python
+    command: [python, -m, indexing_worker.consumer]
+    restart: unless-stopped
+    environment:
+      INDEXER_DB: /index/indexer.sqlite3
+      COLLECTOR_BASE_URL: http://collector:8001
+      RABBITMQ_URL: amqp://demo:local-demo-only@rabbitmq:5672/%2F
+      RABBITMQ_QUEUE: studentpath.pending.demo
+    volumes: [index:/index]
+    depends_on:
+      seed: {condition: service_completed_successfully}
+      rabbitmq: {condition: service_healthy}
+      collector: {condition: service_started}
+  retrieval:
+    <<: *python
+    command: [python, -m, uvicorn, retrieval_api.app:app, --host, 0.0.0.0, --port, '8002']
+    environment:
+      RETRIEVAL_INDEX_DB: /index/indexer.sqlite3
+      COLLECTOR_BASE_URL: http://collector:8001
+    volumes: [index:/index:ro]
+  answer:
+    <<: *python
+    command: [python, -m, uvicorn, answer_service.app:app, --host, 0.0.0.0, --port, '8003']
+    environment:
+      ANSWER_GENERATION_MODE: evidence_only
+  gateway:
+    <<: *python
+    command: [python, -m, uvicorn, gateway.app:app, --host, 0.0.0.0, --port, '8000']
+    environment:
+      RETRIEVAL_BASE_URL: http://retrieval:8002
+      ANSWER_BASE_URL: http://answer:8003
+    ports: ['127.0.0.1:8091:8000']
+    depends_on: [retrieval, answer]
+  runner:
+    <<: *python
+    profiles: [checks]
+    environment:
+      DEMO_REVISION: ${DEMO_REVISION:-unknown}
+    volumes:
+      - collector:/state
+      - ./docker-check-results/pending-update:/results
+volumes:
+  collector:
+  index:
+  broker:

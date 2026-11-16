@@ -1,0 +1,205 @@
+{
+  "revision": "04e5a41556efc250cccaa98be7c3619ad173e526",
+  "complete": true,
+  "python": "3.12.16",
+  "demo_sha256": "e06c803de39cffe4804cb41b258f89e4ea2383ea8fdc01da583d8f4ddbe1f24e",
+  "scope": "Isolated real Docker services; synthetic evidence; no Ollama generation.",
+  "initial_sources": {
+    "PENDING_FORM": {
+      "source_id": "PENDING_FORM",
+      "source_version": 3,
+      "snapshot_id": "PENDING_FORM:a56c956d8727c2cdcc812c6f3633c34f20a984af6ae798239c71e765c830e15c",
+      "detected_at": "2026-11-16T13:14:42.598588+00:00",
+      "last_success_at": "2026-11-16T13:15:52.894949+00:00",
+      "last_attempt_at": "2026-11-16T13:15:52.821307+00:00",
+      "last_error": null
+    },
+    "PENDING_FEE": {
+      "source_id": "PENDING_FEE",
+      "source_version": 1,
+      "snapshot_id": "PENDING_FEE:e184c08f606ea54efe620ba503fefb9a1b70535d68f361fc8a90e78db6cada3e",
+      "detected_at": "2026-11-16T13:14:31.372978+00:00",
+      "last_success_at": "2026-11-16T13:15:52.897577+00:00",
+      "last_attempt_at": "2026-11-16T13:15:52.896464+00:00",
+      "last_error": null
+    }
+  },
+  "phases": [
+    {
+      "phase": "before",
+      "at": "2026-11-16T13:15:54.211657+00:00",
+      "responses": {
+        "affected_question": {
+          "request_id": "demo-2cf5f551cfb54de28b086a83408f083c",
+          "status": "degraded",
+          "answer": null,
+          "checklist": [],
+          "sources": [
+            {
+              "source_id": "PENDING_FORM",
+              "snapshot_id": "PENDING_FORM:a56c956d8727c2cdcc812c6f3633c34f20a984af6ae798239c71e765c830e15c",
+              "source_version": 3,
+              "url": "https://www.irishimmigration.ie/synthetic-demo/pending_form/",
+              "passage": "formprobe blue"
+            }
+          ],
+          "index_version": "idx-4",
+          "last_success_at": "2026-11-16T13:14:31.372978Z",
+          "fallback_used": true,
+          "model": {
+            "name": "evidence-only",
+            "prompt_version": "none"
+          },
+          "notice": "Information only. This is not an eligibility decision or legal advice.",
+          "abstention": null
+        },
+        "unaffected_question": {
+          "request_id": "demo-83587ff254e64967878d06d5f31fa3c2",
+          "status": "degraded",
+          "answer": null,
+          "checklist": [],
+          "sources": [
+            {
+              "source_id": "PENDING_FEE",
+              "snapshot_id": "PENDING_FEE:e184c08f606ea54efe620ba503fefb9a1b70535d68f361fc8a90e78db6cada3e",
+              "source_version": 1,
+              "url": "https://www.irishimmigration.ie/synthetic-demo/pending_fee/",
+              "passage": "feeprobe ten"
+            }
+          ],
+          "index_version": "idx-4",
+          "last_success_at": "2026-11-16T13:14:31.372978Z",
+          "fallback_used": true,
+          "model": {
+            "name": "evidence-only",
+            "prompt_version": "none"
+          },
+          "notice": "Information only. This is not an eligibility decision or legal advice.",
+          "abstention": null
+        }
+      }
+    },
+    {
+      "phase": "pending",
+      "at": "2026-11-16T13:16:03.153741+00:00",
+      "responses": {
+        "affected_question": {
+          "request_id": "demo-0937f5eabb1f4cea872f6f7001732fee",
+          "status": "insufficient_evidence",
+          "answer": null,
+          "checklist": [],
+          "sources": [],
+          "index_version": "idx-4",
+          "last_success_at": "2026-11-16T13:14:31.372978Z",
+          "fallback_used": false,
+          "model": {
+            "name": "policy-response",
+            "prompt_version": "none"
+          },
+          "notice": "Information only. This is not an eligibility decision or legal advice.",
+          "abstention": {
+            "reason": "pending_source_update",
+            "message": "One or more sources used for this question have changed and the saved information has not been updated yet. Check the linked official sources or try again shortly.",
+            "affected_sources": [
+              {
+                "source_id": "PENDING_FORM",
+                "indexed_source_version": 3,
+                "latest_source_version": 4,
+                "detected_at": "2026-11-16T13:15:54.889847+00:00",
+                "url": "https://www.irishimmigration.ie/synthetic-demo/pending_form/"
+              }
+            ]
+          }
+        },
+        "unaffected_question": {
+          "request_id": "demo-b48f4d67aa984ba9bbdb6def0ee9cc57",
+          "status": "degraded",
+          "answer": null,
+          "checklist": [],
+          "sources": [
+            {
+              "source_id": "PENDING_FEE",
+              "snapshot_id": "PENDING_FEE:e184c08f606ea54efe620ba503fefb9a1b70535d68f361fc8a90e78db6cada3e",
+              "source_version": 1,
+              "url": "https://www.irishimmigration.ie/synthetic-demo/pending_fee/",
+              "passage": "feeprobe ten"
+            }
+          ],
+          "index_version": "idx-4",
+          "last_success_at": "2026-11-16T13:14:31.372978Z",
+          "fallback_used": true,
+          "model": {
+            "name": "evidence-only",
+            "prompt_version": "none"
+          },
+          "notice": "Information only. This is not an eligibility decision or legal advice.",
+          "abstention": null
+        }
+      }
+    },
+    {
+      "phase": "after",
+      "at": "2026-11-16T13:16:03.871942+00:00",
+      "responses": {
+        "affected_question": {
+          "request_id": "demo-1a11f49bac5b4e5f9e71156eb9899b27",
+          "status": "degraded",
+          "answer": null,
+          "checklist": [],
+          "sources": [
+            {
+              "source_id": "PENDING_FORM",
+              "snapshot_id": "PENDING_FORM:366b6e993c653ce46cf0e30259e526963bd15d4839118f3d6dbb74dd9e1a1aa7",
+              "source_version": 4,
+              "url": "https://www.irishimmigration.ie/synthetic-demo/pending_form/",
+              "passage": "formprobe green"
+            }
+          ],
+          "index_version": "idx-5",
+          "last_success_at": "2026-11-16T13:14:31.372978Z",
+          "fallback_used": true,
+          "model": {
+            "name": "evidence-only",
+            "prompt_version": "none"
+          },
+          "notice": "Information only. This is not an eligibility decision or legal advice.",
+          "abstention": null
+        },
+        "unaffected_question": {
+          "request_id": "demo-2ea20c1faf7a4783ad67de52c7a171c5",
+          "status": "degraded",
+          "answer": null,
+          "checklist": [],
+          "sources": [
+            {
+              "source_id": "PENDING_FEE",
+              "snapshot_id": "PENDING_FEE:e184c08f606ea54efe620ba503fefb9a1b70535d68f361fc8a90e78db6cada3e",
+              "source_version": 1,
+              "url": "https://www.irishimmigration.ie/synthetic-demo/pending_fee/",
+              "passage": "feeprobe ten"
+            }
+          ],
+          "index_version": "idx-5",
+          "last_success_at": "2026-11-16T13:14:31.372978Z",
+          "fallback_used": true,
+          "model": {
+            "name": "evidence-only",
+            "prompt_version": "none"
+          },
+          "notice": "Information only. This is not an eligibility decision or legal advice.",
+          "abstention": null
+        }
+      }
+    }
+  ],
+  "changed_source": {
+    "source_id": "PENDING_FORM",
+    "source_version": 4,
+    "snapshot_id": "PENDING_FORM:366b6e993c653ce46cf0e30259e526963bd15d4839118f3d6dbb74dd9e1a1aa7",
+    "detected_at": "2026-11-16T13:15:54.889847+00:00",
+    "last_success_at": "2026-11-16T13:15:54.889847+00:00",
+    "last_attempt_at": "2026-11-16T13:15:54.821343+00:00",
+    "last_error": null
+  },
+  "build_note": "Host commit records unchanged service code; demo config/scripts were uncommitted at build time. demo_sha256 identifies the runner."
+}

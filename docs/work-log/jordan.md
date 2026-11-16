@@ -167,3 +167,65 @@
   The pending-update response requires coordinated consumer/schema changes.
 - Field names, fixed-message policy and metadata remain provisional until review.
   Local changes are not committed or pushed to PR #20 at this checkpoint.
+
+
+## 2026-11-16 - Real Docker pending-update handover
+
+- Separate `feature/pending-update-demo` branch based on main `04e5a41`.
+- Added dedicated Compose setup and phase/controller scripts; no service
+  implementation changes. Separate project/volumes/queue, Gateway loopback 8091.
+- Built Python 3.12 image and exercised Collector → outbox → relay → RabbitMQ →
+  Indexer → SQLite → Retrieval → Gateway → Answer over real process boundaries.
+- Baseline two questions returned evidence; stopped only demo Indexer, changed
+  form fixture, verified pending handover for form and unaffected fee response;
+  resumed Indexer and verified new green evidence at source version 4 / idx-5.
+- Corrected runner restart after initial attempt reran seed: now starts only the
+  existing Indexer container. Partial attempt not counted as successful.
+- Saved raw successful six-response evidence and a dated summary. Mode is
+  evidence_only; no live model, frontend or pending Answer PR integration claim.
+- Compose configuration validation, shell syntax check and actual demo passed.
+  Containers left running for inspection. No volumes deleted or unrelated Docker
+  projects changed. Changes uncommitted for Jordan's review.
+
+
+### Combined PR, real model and frontend check
+
+- Assembled a temporary copy from main plus PR26 contracts, PR27 resilience,
+  PR28 metrics and PR29 guard/evaluation code. Open branches unchanged.
+- Full combined suite: 393 passed, 6 optional skips, existing warning.
+- Separate combined Docker stack used host Ollama. Blue/ten-euro baseline,
+  affected pending refusal/unaffected model answer, then green/idx-3 recovery
+  all passed. Browser displayed initial and updated generated answers.
+- Guard through actual Gateway returned policy refusal with model-attempt
+  delta zero. Metrics showed reported usage and active generation zero.
+- Found frontend omission: ignores abstention explanation/affected-source links,
+  showing generic insufficient-evidence text. Screenshot saved, no frontend edit.
+- Saved exact branch revisions, configuration and responses under docs/evaluation.
+  Not final-main evidence; rerun after approvals/merges and frontend follow-up.
+
+## Remaining submission work (checkpoint: 16 November 2026)
+
+- [ ] Review, commit and publish the isolated demo and integration evidence on
+  feature/pending-update-demo; the files are currently uncommitted.
+- [ ] Obtain independent review of PRs #26–29, address feedback and merge in
+  dependency order (#27 before #28; retarget #28 to main after its parent merges).
+- [ ] Coordinate frontend display of pending-update message and affected links.
+- [ ] Complete broader real-source question evaluation and manual claim-support
+  review with the team; synthetic development tests are not domain accuracy.
+- [ ] Agree system-wide dashboard integration, resource/usage control and any
+  remaining assessment requirements with owners. Reported tokens are not budget
+  enforcement; do not silently treat these requirements as finished.
+- [ ] Rerun startup and combined functional checks from final merged main, not
+  only temporary PR snapshots. Record final revision, commands and outcomes.
+- [ ] Update shared report pending/merged language, results, unresolved limits
+  and evidence links; remove scaffolding and verify the six-page maximum.
+- [ ] Finalise selected ADR-0004 if chosen among the team's three one-page ADRs;
+  align its Drive and repository drafts with the final reviewed implementation.
+- [ ] Complete Jordan's contribution statement and accurate disclosure-table
+  entries from the separate local notes; agree final submission packaging.
+- [ ] Check the announced viva date, then prepare explanations and practice.
+
+Notebook milestones stay open until completion: coding awaiting review/final
+requirements check; evaluation needs real-source evidence; integration needs
+final-main rerun and frontend follow-up; documentation needs final submission
+pass; viva preparation follows the submission priority but respects its schedule.

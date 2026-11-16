@@ -1,0 +1,252 @@
+{
+  "revisions": {
+    "origin/main": "04e5a41556efc250cccaa98be7c3619ad173e526",
+    "origin/feature/answer-contract-alignment": "0372b38aad87314f597e5c336e7bbd05231e70b9",
+    "origin/feature/answer-resilience": "8d310c301aaa00737ec904113f62d6da86c2159a",
+    "origin/feature/answer-metrics": "b3369765b789b7bf4c8c597ee8bc2e1a340dd5b9",
+    "origin/feature/answer-evaluation": "9cf55871eda67aa351671a0c4a9d17bc46835421"
+  },
+  "scope": "Temporary combined PR snapshot, not merged main. Real Docker services, existing frontend and local Ollama llama3.2:3b. Synthetic evidence only.",
+  "automated_tests": {
+    "passed": 393,
+    "skipped": 6,
+    "warnings": 1
+  },
+  "pending_update": {
+    "revision": "combined-pending-prs",
+    "complete": true,
+    "python": "3.12.16",
+    "demo_sha256": "9e308c7251d786c9dafff9281c0966780f5047f8b50bc4ad4db9f18e87fe5859",
+    "scope": "Temporary combined PR code; real Docker services and host Ollama; synthetic evidence.",
+    "initial_sources": {
+      "PENDING_FORM": {
+        "source_id": "PENDING_FORM",
+        "source_version": 1,
+        "snapshot_id": "PENDING_FORM:1e9b64780f635e7e4b114c81706f7a2bd8160b59c844c79b14e6135048db6fd2",
+        "detected_at": "2026-11-16T14:16:39.763906+00:00",
+        "last_success_at": "2026-11-16T14:16:39.763906+00:00",
+        "last_attempt_at": "2026-11-16T14:16:39.663070+00:00",
+        "last_error": null
+      },
+      "PENDING_FEE": {
+        "source_id": "PENDING_FEE",
+        "source_version": 1,
+        "snapshot_id": "PENDING_FEE:cfdeb67c41420006e4a79ac00ec51bd3f3cce77549c8532ee77fb444dd5cd45e",
+        "detected_at": "2026-11-16T14:16:39.768576+00:00",
+        "last_success_at": "2026-11-16T14:16:39.768576+00:00",
+        "last_attempt_at": "2026-11-16T14:16:39.766588+00:00",
+        "last_error": null
+      }
+    },
+    "phases": [
+      {
+        "phase": "before",
+        "at": "2026-11-16T14:17:07.426746+00:00",
+        "responses": {
+          "affected_question": {
+            "request_id": "demo-2e9180c695744033a398058d50bbef59",
+            "status": "answered",
+            "answer": "blue",
+            "checklist": [],
+            "sources": [
+              {
+                "source_id": "PENDING_FORM",
+                "snapshot_id": "PENDING_FORM:1e9b64780f635e7e4b114c81706f7a2bd8160b59c844c79b14e6135048db6fd2",
+                "source_version": 1,
+                "url": "https://www.irishimmigration.ie/synthetic-demo/pending_form/",
+                "passage": "The formprobe colour is blue."
+              }
+            ],
+            "index_version": "idx-2",
+            "last_success_at": "2026-11-16T14:16:39.763906Z",
+            "fallback_used": false,
+            "model": {
+              "name": "llama3.2:3b",
+              "prompt_version": "studentpath-answer-v1"
+            },
+            "notice": "Information only. This is not an eligibility decision or legal advice.",
+            "abstention": null
+          },
+          "unaffected_question": {
+            "request_id": "demo-1b76e017ed1142b7a0302b0b85ee7111",
+            "status": "answered",
+            "answer": "ten euro",
+            "checklist": [],
+            "sources": [
+              {
+                "source_id": "PENDING_FEE",
+                "snapshot_id": "PENDING_FEE:cfdeb67c41420006e4a79ac00ec51bd3f3cce77549c8532ee77fb444dd5cd45e",
+                "source_version": 1,
+                "url": "https://www.irishimmigration.ie/synthetic-demo/pending_fee/",
+                "passage": "The feeprobe amount is ten euro."
+              }
+            ],
+            "index_version": "idx-2",
+            "last_success_at": "2026-11-16T14:16:39.763906Z",
+            "fallback_used": false,
+            "model": {
+              "name": "llama3.2:3b",
+              "prompt_version": "studentpath-answer-v1"
+            },
+            "notice": "Information only. This is not an eligibility decision or legal advice.",
+            "abstention": null
+          }
+        }
+      },
+      {
+        "phase": "pending",
+        "at": "2026-11-16T14:18:01.470621+00:00",
+        "responses": {
+          "affected_question": {
+            "request_id": "demo-2b51291a3fe647bbaa67d88effbfc9b1",
+            "status": "insufficient_evidence",
+            "answer": null,
+            "checklist": [],
+            "sources": [],
+            "index_version": "idx-2",
+            "last_success_at": "2026-11-16T14:16:39.763906Z",
+            "fallback_used": false,
+            "model": {
+              "name": "policy-response",
+              "prompt_version": "none"
+            },
+            "notice": "Information only. This is not an eligibility decision or legal advice.",
+            "abstention": {
+              "reason": "pending_source_update",
+              "message": "One or more sources used for this question have changed and the saved information has not been updated yet. Check the linked official sources or try again shortly.",
+              "affected_sources": [
+                {
+                  "source_id": "PENDING_FORM",
+                  "indexed_source_version": 1,
+                  "latest_source_version": 2,
+                  "detected_at": "2026-11-16T14:17:58.809603+00:00",
+                  "url": "https://www.irishimmigration.ie/synthetic-demo/pending_form/"
+                }
+              ]
+            }
+          },
+          "unaffected_question": {
+            "request_id": "demo-05f88fbac5bc45598e9ba35d9841e16a",
+            "status": "answered",
+            "answer": "ten euro",
+            "checklist": [],
+            "sources": [
+              {
+                "source_id": "PENDING_FEE",
+                "snapshot_id": "PENDING_FEE:cfdeb67c41420006e4a79ac00ec51bd3f3cce77549c8532ee77fb444dd5cd45e",
+                "source_version": 1,
+                "url": "https://www.irishimmigration.ie/synthetic-demo/pending_fee/",
+                "passage": "The feeprobe amount is ten euro."
+              }
+            ],
+            "index_version": "idx-2",
+            "last_success_at": "2026-11-16T14:16:39.763906Z",
+            "fallback_used": false,
+            "model": {
+              "name": "llama3.2:3b",
+              "prompt_version": "studentpath-answer-v1"
+            },
+            "notice": "Information only. This is not an eligibility decision or legal advice.",
+            "abstention": null
+          }
+        }
+      },
+      {
+        "phase": "after",
+        "at": "2026-11-16T14:18:32.842858+00:00",
+        "responses": {
+          "affected_question": {
+            "request_id": "demo-c335b3a105c54bdfbdde41d1e4b71e02",
+            "status": "answered",
+            "answer": "green",
+            "checklist": [],
+            "sources": [
+              {
+                "source_id": "PENDING_FORM",
+                "snapshot_id": "PENDING_FORM:191f0f4bfaf964a6ccd68cbc65635e59160f5ce41fa6a2bfaacd7b6e27788830",
+                "source_version": 2,
+                "url": "https://www.irishimmigration.ie/synthetic-demo/pending_form/",
+                "passage": "The formprobe colour is green."
+              }
+            ],
+            "index_version": "idx-3",
+            "last_success_at": "2026-11-16T14:16:39.768576Z",
+            "fallback_used": false,
+            "model": {
+              "name": "llama3.2:3b",
+              "prompt_version": "studentpath-answer-v1"
+            },
+            "notice": "Information only. This is not an eligibility decision or legal advice.",
+            "abstention": null
+          },
+          "unaffected_question": {
+            "request_id": "demo-aef5e18b15944cb882c0e0958b36f457",
+            "status": "answered",
+            "answer": "ten euro",
+            "checklist": [],
+            "sources": [
+              {
+                "source_id": "PENDING_FEE",
+                "snapshot_id": "PENDING_FEE:cfdeb67c41420006e4a79ac00ec51bd3f3cce77549c8532ee77fb444dd5cd45e",
+                "source_version": 1,
+                "url": "https://www.irishimmigration.ie/synthetic-demo/pending_fee/",
+                "passage": "The feeprobe amount is ten euro."
+              }
+            ],
+            "index_version": "idx-3",
+            "last_success_at": "2026-11-16T14:16:39.768576Z",
+            "fallback_used": false,
+            "model": {
+              "name": "llama3.2:3b",
+              "prompt_version": "studentpath-answer-v1"
+            },
+            "notice": "Information only. This is not an eligibility decision or legal advice.",
+            "abstention": null
+          }
+        }
+      }
+    ],
+    "changed_source": {
+      "source_id": "PENDING_FORM",
+      "source_version": 2,
+      "snapshot_id": "PENDING_FORM:191f0f4bfaf964a6ccd68cbc65635e59160f5ce41fa6a2bfaacd7b6e27788830",
+      "detected_at": "2026-11-16T14:17:58.809603+00:00",
+      "last_success_at": "2026-11-16T14:17:58.809603+00:00",
+      "last_attempt_at": "2026-11-16T14:17:58.741268+00:00",
+      "last_error": null
+    }
+  },
+  "extra_checks": {
+    "guard_response": {
+      "request_id": "combined-guard",
+      "status": "insufficient_evidence",
+      "answer": null,
+      "checklist": [],
+      "sources": [],
+      "index_version": "idx-3",
+      "last_success_at": "2026-11-16T14:16:39.768576Z",
+      "fallback_used": false,
+      "model": {
+        "name": "policy-response",
+        "prompt_version": "instruction-guard-v1"
+      },
+      "notice": "Information only. This is not an eligibility decision or legal advice.",
+      "abstention": null
+    },
+    "guard_model_attempt_delta": 0.0,
+    "reported_tokens": {
+      "input": 2634.0,
+      "output": 178.0
+    },
+    "active_after_requests": 0,
+    "model_attempts": 7.0
+  },
+  "browser_observations": {
+    "before": "blue; source text and idx-2 visible",
+    "pending": "Generic insufficient-evidence message; missing pending-update explanation and source URL in UI",
+    "after": "green; new source text and idx-3 visible"
+  },
+  "temporary_config": "name: studentpath-combined-demo\nx-python: &python\n  image: studentpath-combined-demo:local\n  build:\n    context: .\n    dockerfile: Dockerfile.check\n  init: true\nservices:\n  rabbitmq:\n    image: rabbitmq:4-management\n    hostname: rabbitmq\n    environment:\n      RABBITMQ_DEFAULT_USER: demo\n      RABBITMQ_DEFAULT_PASS: local-demo-only\n    volumes: [broker:/var/lib/rabbitmq]\n    healthcheck:\n      test: [CMD, rabbitmq-diagnostics, -q, check_port_connectivity]\n      interval: 5s\n      timeout: 5s\n      retries: 20\n  seed:\n    <<: *python\n    command: [python, -m, scripts.demo_pending_update, seed]\n    volumes: [collector:/state]\n  collector:\n    <<: *python\n    command: [python, -m, uvicorn, source_collector.snapshot_api:app, --host, 0.0.0.0, --port, '8001']\n    environment:\n      COLLECTOR_DB: /state/collector.sqlite3\n    volumes: [collector:/state]\n    depends_on:\n      seed: {condition: service_completed_successfully}\n  relay:\n    <<: *python\n    command: [python, -m, source_collector.relay]\n    restart: unless-stopped\n    environment:\n      COLLECTOR_DB: /state/collector.sqlite3\n      RABBITMQ_URL: amqp://demo:local-demo-only@rabbitmq:5672/%2F\n      RABBITMQ_QUEUE: studentpath.pending.demo\n      RELAY_RETRY_SECONDS: '2'\n    volumes: [collector:/state]\n    depends_on:\n      seed: {condition: service_completed_successfully}\n      rabbitmq: {condition: service_healthy}\n  indexer:\n    <<: *python\n    command: [python, -m, indexing_worker.consumer]\n    restart: unless-stopped\n    environment:\n      INDEXER_DB: /index/indexer.sqlite3\n      COLLECTOR_BASE_URL: http://collector:8001\n      RABBITMQ_URL: amqp://demo:local-demo-only@rabbitmq:5672/%2F\n      RABBITMQ_QUEUE: studentpath.pending.demo\n    volumes: [index:/index]\n    depends_on:\n      seed: {condition: service_completed_successfully}\n      rabbitmq: {condition: service_healthy}\n      collector: {condition: service_started}\n  retrieval:\n    <<: *python\n    command: [python, -m, uvicorn, retrieval_api.app:app, --host, 0.0.0.0, --port, '8002']\n    environment:\n      RETRIEVAL_INDEX_DB: /index/indexer.sqlite3\n      COLLECTOR_BASE_URL: http://collector:8001\n    volumes: [index:/index:ro]\n  answer:\n    <<: *python\n    command: [python, -m, uvicorn, answer_service.app:app, --host, 0.0.0.0, --port, '8003']\n    environment:\n      ANSWER_GENERATION_MODE: ollama\n      OLLAMA_BASE_URL: http://host.docker.internal:11434\n      OLLAMA_MODEL: llama3.2:3b\n  gateway:\n    <<: *python\n    command: [python, -m, uvicorn, gateway.app:app, --host, 0.0.0.0, --port, '8000']\n    environment:\n      RETRIEVAL_BASE_URL: http://retrieval:8002\n      ANSWER_BASE_URL: http://answer:8003\n    ports: ['127.0.0.1:8093:8000']\n    depends_on: [retrieval, answer]\n  web:\n    image: nginx:alpine\n    ports: ['127.0.0.1:8094:80']\n    volumes:\n      - ./frontend/dist:/usr/share/nginx/html:ro\n      - ./docker-check/combined-nginx.conf:/etc/nginx/conf.d/default.conf:ro\n    depends_on: [gateway]\n  runner:\n    <<: *python\n    profiles: [checks]\n    environment:\n      DEMO_REVISION: ${DEMO_REVISION:-combined-pending-prs}\n      DEMO_GENERATION_MODE: ollama\n    volumes:\n      - collector:/state\n      - ./docker-check-results/pending-update:/results\nvolumes:\n  collector:\n  index:\n  broker:\n",
+  "runner_sha256": "9e308c7251d786c9dafff9281c0966780f5047f8b50bc4ad4db9f18e87fe5859",
+  "open_issue": "Existing frontend renderAnswer ignores abstention.message and affected_sources; frontend owner change required."
+}
