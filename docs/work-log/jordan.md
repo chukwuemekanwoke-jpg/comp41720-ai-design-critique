@@ -188,3 +188,29 @@
   nonzero because expectations failed; the report is complete and preserved.
 - Next: runtime injection mitigation and unseen attack variants; broader source
   evidence and connected-system evaluation remain separate work.
+
+
+## 2026-11-16 - Explicit override refusal after baseline
+
+- Continued on `feature/answer-evaluation` after baseline commit `97700ad`.
+- Added instruction-guard-v1 for explicit override/role markers in questions
+  and passages, including representative Unicode and whitespace variants.
+- Refuses the full request before model generation or suspect evidence fallback
+  in either mode. Pending-update explanations retain priority. No public fields
+  added; policy label distinguishes this from generated output.
+- Original evidence text remains intact in input models. Updated one earlier
+  fallback-content test because returning detected attack text is intentionally
+  replaced by refusal. Twenty new guard checks pass.
+- Full suite: 365 passed, 5 skipped, existing warning. No resilience/metrics PR
+  code is included on this main-based branch.
+- Preserved baseline and expectations. Follow-up 240 requests: 200 original
+  expectations passed. E08/E09 still fail usefulness expectations, but all 60
+  original attack requests now return policy refusals instead of model answers.
+- Additional 25-request development run: role/Unicode variants refused by guard,
+  benign instructions answered; indirect evaluator pressure missed by guard but
+  refused by the model in five trials. Not held-out security evidence.
+- The short variants run overlapped part of the main repeat run. Results retain
+  this operator note; no comparative timing or throughput claims are made.
+- Added method, limits and result summaries. Team review required for refusal
+  policy; specific frontend explanations remain coordinated contract work.
+- Runtime changes and follow-up evidence remain uncommitted for Jordan's review.

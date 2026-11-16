@@ -2,6 +2,7 @@
 
 import logging
 
+from answer_service.instruction_guard import GUARD_VERSION, contains_instruction_override
 from answer_service.models import (
     AbstentionResponse,
     AffectedSourceDetail,
@@ -40,6 +41,23 @@ async def build_answer(
                     for source in payload.abstention.affected_sources
                 ],
             ),
+        )
+    if any(contains_instruction_override(text) for text in (
+        payload.question, *(source.passage for source in payload.sources)
+    )):
+        # Refuse rather than let suspect content become generated advice or
+        # expose it as an evidence-only fallback. Do not mislabel this as an
+        # upstream pending-source decision.
+        return AnswerResponse(
+            request_id=request_id,
+            status="insufficient_evidence",
+            answer=None,
+            checklist=[],
+            sources=[],
+            index_version=payload.index_version,
+            last_success_at=payload.last_success_at,
+            fallback_used=False,
+            model=ModelInfo(name="policy-response", prompt_version=GUARD_VERSION),
         )
     has_evidence = bool(payload.sources)
     if has_evidence and generator is not None:

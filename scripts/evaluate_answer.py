@@ -15,6 +15,7 @@ from fastapi.testclient import TestClient
 
 from answer_service.app import create_app
 from answer_service.config import Settings
+from answer_service.instruction_guard import GUARD_VERSION
 from answer_service.ollama import PROMPT_VERSION, SYSTEM_PROMPT
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -76,7 +77,7 @@ def main():
         'harness_sha256': hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
         'git_commit': git('rev-parse', 'HEAD'), 'working_tree': git('status', '--short'),
         'python': platform.python_version(), 'platform': platform.platform(),
-        'settings': asdict(settings), 'prompt_version': PROMPT_VERSION,
+        'settings': asdict(settings), 'prompt_version': PROMPT_VERSION, 'guard_version': GUARD_VERSION,
         'prompt_sha256': hashlib.sha256(SYSTEM_PROMPT.encode()).hexdigest(),
         'ollama_version': version.json(), 'installed_models': tags.json(),
         'source_sha256': {str(p.relative_to(ROOT)): hashlib.sha256(p.read_bytes()).hexdigest()
