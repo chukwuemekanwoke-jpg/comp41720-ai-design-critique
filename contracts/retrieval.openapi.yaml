@@ -31,7 +31,7 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [request_id, index_version, last_success_at, passages]
+                required: [request_id, index_version, last_success_at, passages, pending_sources, freshness_confirmed]
                 properties:
                   request_id: {type: string}
                   index_version: {type: string}
@@ -49,6 +49,20 @@ paths:
                         url: {type: string}
                         text: {type: string}
                         score: {type: number, minimum: 0, maximum: 1, description: Lexical query coverage; not confidence.}
+                  pending_sources:
+                    type: array
+                    description: ADR-0003. Returned sources whose Collector source_version is newer than the indexed one.
+                    items:
+                      type: object
+                      required: [source_id, indexed_source_version, latest_source_version, detected_at]
+                      properties:
+                        source_id: {type: string}
+                        indexed_source_version: {type: integer, minimum: 1}
+                        latest_source_version: {type: integer, minimum: 1}
+                        detected_at: {type: string, format: date-time, nullable: true}
+                  freshness_confirmed:
+                    type: boolean
+                    description: False when any returned source's Collector status is missing or older than the cache limit.
         '400':
           description: invalid_request
           content:
