@@ -6,6 +6,17 @@ import pytest
 
 from source_collector.collector import Collector
 from source_collector.relay import Config, OutboxRelay, RabbitPublisher
+from scripts.demo_collector_refresh import collect_sequence, replay
+
+
+@pytest.mark.skipif(not os.environ.get("RABBITMQ_INTEGRATION_URL"),
+                    reason="Set RABBITMQ_INTEGRATION_URL to run against a local broker")
+def test_refresh_demo_replays_after_connection_failure(tmp_path):
+    db = tmp_path / "refresh.sqlite3"
+    collect_sequence(db)
+    report = replay(db, os.environ["RABBITMQ_INTEGRATION_URL"])
+    assert report["transport"] == "rabbitmq"
+    assert report["published"] == 3
 
 
 @pytest.mark.skipif(not os.environ.get("RABBITMQ_INTEGRATION_URL"),

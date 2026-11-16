@@ -26,6 +26,9 @@ The existing event and snapshot response contracts remain unchanged.
 
 ## RabbitMQ demonstration (PowerShell)
 
+For an isolated refresh and replay demonstration, see the
+[one-command offline refresh demo](docs/collector-offline-refresh.md).
+
 Use a project virtual environment. Create an untracked `.env` with your own
 `RABBITMQ_USER` and `RABBITMQ_PASSWORD` values. Do not commit credentials.
 
