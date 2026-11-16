@@ -53,12 +53,29 @@ async def retrieve(client, request_id, question, deadline):
         raise UpstreamFailure() from None
 
 
+def abstention_decision(evidence, sources):
+    """Build the Answer handover for retrieved sources with a pending change."""
+    supplied = {source.source_id for source in sources}
+    affected = [p for p in evidence.pending_sources if p.source_id in supplied]
+    if not affected:
+        return None
+    return {"reason": "pending_source_update", "affected_sources": [
+        # detected_at is always sent, even as null: Answer rejects a missing key.
+        {"source_id": p.source_id, "indexed_source_version": p.indexed_source_version,
+         "latest_source_version": p.latest_source_version, "detected_at": p.detected_at}
+        for p in affected]}
+
+
 async def orchestrate(retrieval_client, answer_client, settings, request_id, question):
     try:
         async with asyncio.timeout(settings.total_timeout):
             evidence, sources = await retrieve(retrieval_client, request_id, question, settings.retrieval_timeout)
             body = {"question": question, "sources": [s.model_dump() for s in sources],
                     "index_version": evidence.index_version, "last_success_at": evidence.last_success_at}
+            decision = abstention_decision(evidence, sources)
+            if decision is not None:
+                # ADR-0003 handover: Answer builds the refusal without calling the model.
+                body["abstention"] = decision
             raw = await post_json(answer_client, "/v1/answers", body, request_id, settings.answer_timeout)
             try:
                 answer = AnswerOut.model_validate(raw)
@@ -72,6 +89,13 @@ async def orchestrate(retrieval_client, answer_client, settings, request_id, que
                     raise ValueError("Invented or duplicated citations")
                 if answer.status == "degraded" and answer.sources != sources:
                     raise ValueError("Fallback did not retain original evidence")
+                requested = {a["source_id"] for a in decision["affected_sources"]} if decision else set()
+                returned = {a.source_id for a in answer.abstention.affected_sources} if answer.abstention else set()
+                if requested != returned:
+                    raise ValueError("Answer did not honour the abstention decision")
+                # TODO(ADR-0003): surface evidence.freshness_confirmed == False to users as a
+                # "freshness could not be confirmed" warning. Needs a public contract field
+                # and frontend display; agree the wording first.
                 return answer
             except (ValidationError, ValueError):
                 raise UpstreamFailure() from None

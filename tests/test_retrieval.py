@@ -44,7 +44,10 @@ def test_contract_ranking_and_exact_provenance(repository):
     response = retrieve(TestClient(create_app(repository)))
     assert response.status_code == 200
     body = response.json()
-    assert set(body) == {"request_id", "index_version", "last_success_at", "passages"}
+    assert set(body) == {"request_id", "index_version", "last_success_at", "passages",
+                         "pending_sources", "freshness_confirmed"}
+    # No status cache configured: nothing is pending, but freshness is unconfirmed.
+    assert body["pending_sources"] == [] and body["freshness_confirmed"] is False
     assert response.headers["X-Request-ID"] == body["request_id"] == "abc123"
     assert body["index_version"] == "idx-001"
     assert datetime.fromisoformat(body["last_success_at"].replace("Z", "+00:00")) == TIME

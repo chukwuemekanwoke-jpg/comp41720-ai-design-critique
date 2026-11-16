@@ -1,7 +1,9 @@
 """FastAPI retrieval endpoint with injectable storage and pinned evidence."""
 import re
 import os
+import threading
 import uuid
+from contextlib import asynccontextmanager
 from datetime import datetime
 from typing import Literal
 
@@ -10,6 +12,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field
 
+from .freshness import SourceStatusCache, assess
 from .repository import IndexUnavailable, IndexVersionNotFound, PassageRepository
 from .search import rank
 
@@ -34,11 +37,22 @@ class PassageOut(BaseModel):
     score: float = Field(ge=0, le=1)
 
 
+class PendingSourceOut(BaseModel):
+    source_id: str
+    indexed_source_version: int
+    latest_source_version: int
+    detected_at: str | None
+
+
 class RetrieveOut(BaseModel):
     request_id: str
     index_version: str
     last_success_at: datetime
     passages: list[PassageOut]
+    # ADR-0003: sources among the returned passages with a detected, unindexed change.
+    pending_sources: list[PendingSourceOut]
+    # False when any returned source's Collector status is missing or too old.
+    freshness_confirmed: bool
 
 
 class ErrorOut(BaseModel):
@@ -47,9 +61,13 @@ class ErrorOut(BaseModel):
     message: str
 
 
-def create_app(repository: PassageRepository | None = None) -> FastAPI:
-    """Without an adapter, fail closed with 503; never serve demo data implicitly."""
-    service = FastAPI(title="StudentPath Retrieval API", version="0.1.0")
+def create_app(repository: PassageRepository | None = None,
+               status_cache: SourceStatusCache | None = None, lifespan=None) -> FastAPI:
+    """Without an adapter, fail closed with 503; never serve demo data implicitly.
+
+    Without a status cache, freshness is never confirmed and nothing is pending.
+    """
+    service = FastAPI(title="StudentPath Retrieval API", version="0.2.0", lifespan=lifespan)
 
     @service.middleware("http")
     async def request_context(request: Request, call_next):
@@ -85,11 +103,17 @@ def create_app(repository: PassageRepository | None = None) -> FastAPI:
                 error="index_version_not_found" if missing else "index_unavailable",
                 message="Requested index version is not retained." if missing else "No readable committed index is available."
             ).model_dump())
+        ranked = rank(snapshot, payload.question, payload.top_k)
+        # TODO(ADR-0003): apply the calibrated retrieval-score threshold before this
+        # check. The keyword ranker returns any passage sharing one word with the
+        # question, so a weakly related changed page can make a question abstain.
+        freshness = assess((passage for passage, _ in ranked), status_cache)
         return RetrieveOut(
             request_id=payload.request_id, index_version=snapshot.index_version,
             last_success_at=snapshot.last_success_at,
-            passages=[PassageOut(**vars(passage), score=score)
-                      for passage, score in rank(snapshot, payload.question, payload.top_k)],
+            passages=[PassageOut(**vars(passage), score=score) for passage, score in ranked],
+            pending_sources=[PendingSourceOut(**vars(p)) for p in freshness.pending],
+            freshness_confirmed=freshness.confirmed,
         )
 
     @service.get("/healthz")
@@ -106,10 +130,33 @@ def create_demo_app() -> FastAPI:
 
 def create_configured_app() -> FastAPI:
     path = os.getenv("RETRIEVAL_INDEX_DB")
-    if path:
-        from .sqlite_repository import SQLitePassageRepository
-        return create_app(SQLitePassageRepository(path))
-    return create_app()
+    if not path:
+        return create_app()
+    from .sqlite_repository import SQLitePassageRepository
+    repository = SQLitePassageRepository(path)
+    collector_url = os.getenv("COLLECTOR_BASE_URL")
+    if not collector_url:
+        return create_app(repository)
+
+    from .freshness import CollectorStatusClient, StatusPoller
+    cache = SourceStatusCache()
+
+    @asynccontextmanager
+    async def poll_collector(_application):
+        client = CollectorStatusClient(collector_url)
+        poller = StatusPoller(cache, client.fetch,
+                              lambda: sorted({p.source_id for p in repository.pin().passages}))
+        stop = threading.Event()
+        thread = threading.Thread(target=poller.run, args=(stop,), daemon=True, name="status-poller")
+        thread.start()
+        try:
+            yield
+        finally:
+            stop.set()
+            thread.join(timeout=5)
+            client.close()
+
+    return create_app(repository, cache, lifespan=poll_collector)
 
 
 app = create_configured_app()
