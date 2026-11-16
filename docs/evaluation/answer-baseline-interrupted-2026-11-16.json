@@ -1,0 +1,963 @@
+{
+  "started_at": "2026-11-16T12:41:08.808593+00:00",
+  "scope": "Development fixtures; not a held-out or real-domain evaluation. No official factual claims.",
+  "dataset": "answer-synthetic-v1",
+  "dataset_sha256": "7035271108371153c984f6fee7f7f837710bbd46fff412abd0073186d2ba9836",
+  "git_commit": "04e5a41556efc250cccaa98be7c3619ad173e526",
+  "working_tree": "?? data/evaluation/\n?? scripts/evaluate_answer.py",
+  "python": "3.14.8",
+  "platform": "macOS-27.2.1-arm64-arm-64bit-Mach-O",
+  "settings": {
+    "generation_mode": "ollama",
+    "ollama_url": "http://127.0.0.1:11434",
+    "model": "llama3.2:3b",
+    "timeout_seconds": 20.0,
+    "temperature": 0.0,
+    "max_output_tokens": 256,
+    "context_tokens": 8192,
+    "max_input_characters": 8000
+  },
+  "prompt_version": "studentpath-answer-v1",
+  "prompt_sha256": "84c1ea2e8d8159471fd6387dc887b5e6e35da0893615ce35651279ba6c079636",
+  "ollama_version": {
+    "version": "0.40.16"
+  },
+  "installed_models": {
+    "models": [
+      {
+        "name": "llama3.2:3b",
+        "model": "llama3.2:3b",
+        "modified_at": "2026-10-27T14:39:04.556400127Z",
+        "size": 2019393189,
+        "digest": "a80c4f17acd55265feec403c7aef86be0c25983ab279d83f3bcd3abbcb5b8b72",
+        "details": {
+          "parent_model": "",
+          "format": "gguf",
+          "family": "llama",
+          "families": [
+            "llama"
+          ],
+          "parameter_size": "3.2B",
+          "quantization_level": "Q4_K_M",
+          "context_length": 131072,
+          "embedding_length": 3072,
+          "runner": "ggml"
+        },
+        "capabilities": [
+          "completion",
+          "tools"
+        ]
+      },
+      {
+        "name": "llama3.2:1b",
+        "model": "llama3.2:1b",
+        "modified_at": "2026-09-29T12:18:10.261413314+01:00",
+        "size": 1321098329,
+        "digest": "baf6a787fdffd633537aa2eb51cfd54cb93ff08e28040095462bb63daf552878",
+        "details": {
+          "parent_model": "",
+          "format": "gguf",
+          "family": "llama",
+          "families": [
+            "llama"
+          ],
+          "parameter_size": "1.2B",
+          "quantization_level": "Q8_0",
+          "context_length": 131072,
+          "embedding_length": 2048,
+          "runner": "ggml"
+        },
+        "capabilities": [
+          "completion",
+          "tools"
+        ]
+      }
+    ]
+  },
+  "source_sha256": {
+    "answer_service/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "answer_service/app.py": "d2dad54244cdbe4e0f2bc013381f803bff213e5afb8b4ba03b5a9ebb4c32cd27",
+    "answer_service/config.py": "8e1da1c48e1c6eb4fa60ab2b9451b7461dc0f15cdf1d6cde89992609ac1c8aae",
+    "answer_service/models.py": "73d5f1e9de86b6aa326382503f48d799505f0983be194e55a57482aec04c0ac8",
+    "answer_service/ollama.py": "388d6295a5ffdeb5549f700ba0299b3e0fee8189b9d0450e8c555b2eb7926cba",
+    "answer_service/service.py": "bc547396532dbe2001e956113e8be5ba4acab11c314e7406eaa5e73cf4d18924"
+  },
+  "trials_per_case": 20,
+  "results": [
+    {
+      "case_id": "E01",
+      "category": "supported",
+      "trial": 1,
+      "seconds": 0.842688791002729,
+      "http_status": 200,
+      "failures": [],
+      "response": {
+        "request_id": "eval-E01-1",
+        "status": "answered",
+        "answer": "a blue form",
+        "checklist": [],
+        "sources": [
+          {
+            "source_id": "SYN001",
+            "snapshot_id": "SYN001:eval-v1",
+            "source_version": 1,
+            "url": "https://example.org/eval/1",
+            "passage": "The fictional application requires a blue form."
+          }
+        ],
+        "index_version": "synthetic-index-1",
+        "last_success_at": "2026-10-27T09:00:00+00:00",
+        "fallback_used": false,
+        "model": {
+          "name": "llama3.2:3b",
+          "prompt_version": "studentpath-answer-v1"
+        },
+        "notice": "Information only. This is not an eligibility decision or legal advice."
+      }
+    },
+    {
+      "case_id": "E01",
+      "category": "supported",
+      "trial": 2,
+      "seconds": 0.6980861670017475,
+      "http_status": 200,
+      "failures": [],
+      "response": {
+        "request_id": "eval-E01-2",
+        "status": "answered",
+        "answer": "a blue form",
+        "checklist": [],
+        "sources": [
+          {
+            "source_id": "SYN001",
+            "snapshot_id": "SYN001:eval-v1",
+            "source_version": 1,
+            "url": "https://example.org/eval/1",
+            "passage": "The fictional application requires a blue form."
+          }
+        ],
+        "index_version": "synthetic-index-1",
+        "last_success_at": "2026-10-27T09:00:00+00:00",
+        "fallback_used": false,
+        "model": {
+          "name": "llama3.2:3b",
+          "prompt_version": "studentpath-answer-v1"
+        },
+        "notice": "Information only. This is not an eligibility decision or legal advice."
+      }
+    },
+    {
+      "case_id": "E01",
+      "category": "supported",
+      "trial": 3,
+      "seconds": 0.716799458998139,
+      "http_status": 200,
+      "failures": [],
+      "response": {
+        "request_id": "eval-E01-3",
+        "status": "answered",
+        "answer": "a blue form",
+        "checklist": [],
+        "sources": [
+          {
+            "source_id": "SYN001",
+            "snapshot_id": "SYN001:eval-v1",
+            "source_version": 1,
+            "url": "https://example.org/eval/1",
+            "passage": "The fictional application requires a blue form."
+          }
+        ],
+        "index_version": "synthetic-index-1",
+        "last_success_at": "2026-10-27T09:00:00+00:00",
+        "fallback_used": false,
+        "model": {
+          "name": "llama3.2:3b",
+          "prompt_version": "studentpath-answer-v1"
+        },
+        "notice": "Information only. This is not an eligibility decision or legal advice."
+      }
+    },
+    {
+      "case_id": "E01",
+      "category": "supported",
+      "trial": 4,
+      "seconds": 0.6800820419957745,
+      "http_status": 200,
+      "failures": [],
+      "response": {
+        "request_id": "eval-E01-4",
+        "status": "answered",
+        "answer": "a blue form",
+        "checklist": [],
+        "sources": [
+          {
+            "source_id": "SYN001",
+            "snapshot_id": "SYN001:eval-v1",
+            "source_version": 1,
+            "url": "https://example.org/eval/1",
+            "passage": "The fictional application requires a blue form."
+          }
+        ],
+        "index_version": "synthetic-index-1",
+        "last_success_at": "2026-10-27T09:00:00+00:00",
+        "fallback_used": false,
+        "model": {
+          "name": "llama3.2:3b",
+          "prompt_version": "studentpath-answer-v1"
+        },
+        "notice": "Information only. This is not an eligibility decision or legal advice."
+      }
+    },
+    {
+      "case_id": "E01",
+      "category": "supported",
+      "trial": 5,
+      "seconds": 0.6761374579946278,
+      "http_status": 200,
+      "failures": [],
+      "response": {
+        "request_id": "eval-E01-5",
+        "status": "answered",
+        "answer": "a blue form",
+        "checklist": [],
+        "sources": [
+          {
+            "source_id": "SYN001",
+            "snapshot_id": "SYN001:eval-v1",
+            "source_version": 1,
+            "url": "https://example.org/eval/1",
+            "passage": "The fictional application requires a blue form."
+          }
+        ],
+        "index_version": "synthetic-index-1",
+        "last_success_at": "2026-10-27T09:00:00+00:00",
+        "fallback_used": false,
+        "model": {
+          "name": "llama3.2:3b",
+          "prompt_version": "studentpath-answer-v1"
+        },
+        "notice": "Information only. This is not an eligibility decision or legal advice."
+      }
+    },
+    {
+      "case_id": "E01",
+      "category": "supported",
+      "trial": 6,
+      "seconds": 0.6793520000064746,
+      "http_status": 200,
+      "failures": [],
+      "response": {
+        "request_id": "eval-E01-6",
+        "status": "answered",
+        "answer": "a blue form",
+        "checklist": [],
+        "sources": [
+          {
+            "source_id": "SYN001",
+            "snapshot_id": "SYN001:eval-v1",
+            "source_version": 1,
+            "url": "https://example.org/eval/1",
+            "passage": "The fictional application requires a blue form."
+          }
+        ],
+        "index_version": "synthetic-index-1",
+        "last_success_at": "2026-10-27T09:00:00+00:00",
+        "fallback_used": false,
+        "model": {
+          "name": "llama3.2:3b",
+          "prompt_version": "studentpath-answer-v1"
+        },
+        "notice": "Information only. This is not an eligibility decision or legal advice."
+      }
+    },
+    {
+      "case_id": "E01",
+      "category": "supported",
+      "trial": 7,
+      "seconds": 0.7041171660021064,
+      "http_status": 200,
+      "failures": [],
+      "response": {
+        "request_id": "eval-E01-7",
+        "status": "answered",
+        "answer": "a blue form",
+        "checklist": [],
+        "sources": [
+          {
+            "source_id": "SYN001",
+            "snapshot_id": "SYN001:eval-v1",
+            "source_version": 1,
+            "url": "https://example.org/eval/1",
+            "passage": "The fictional application requires a blue form."
+          }
+        ],
+        "index_version": "synthetic-index-1",
+        "last_success_at": "2026-10-27T09:00:00+00:00",
+        "fallback_used": false,
+        "model": {
+          "name": "llama3.2:3b",
+          "prompt_version": "studentpath-answer-v1"
+        },
+        "notice": "Information only. This is not an eligibility decision or legal advice."
+      }
+    },
+    {
+      "case_id": "E01",
+      "category": "supported",
+      "trial": 8,
+      "seconds": 0.8206425419994048,
+      "http_status": 200,
+      "failures": [],
+      "response": {
+        "request_id": "eval-E01-8",
+        "status": "answered",
+        "answer": "a blue form",
+        "checklist": [],
+        "sources": [
+          {
+            "source_id": "SYN001",
+            "snapshot_id": "SYN001:eval-v1",
+            "source_version": 1,
+            "url": "https://example.org/eval/1",
+            "passage": "The fictional application requires a blue form."
+          }
+        ],
+        "index_version": "synthetic-index-1",
+        "last_success_at": "2026-10-27T09:00:00+00:00",
+        "fallback_used": false,
+        "model": {
+          "name": "llama3.2:3b",
+          "prompt_version": "studentpath-answer-v1"
+        },
+        "notice": "Information only. This is not an eligibility decision or legal advice."
+      }
+    },
+    {
+      "case_id": "E01",
+      "category": "supported",
+      "trial": 9,
+      "seconds": 0.7694006669989903,
+      "http_status": 200,
+      "failures": [],
+      "response": {
+        "request_id": "eval-E01-9",
+        "status": "answered",
+        "answer": "a blue form",
+        "checklist": [],
+        "sources": [
+          {
+            "source_id": "SYN001",
+            "snapshot_id": "SYN001:eval-v1",
+            "source_version": 1,
+            "url": "https://example.org/eval/1",
+            "passage": "The fictional application requires a blue form."
+          }
+        ],
+        "index_version": "synthetic-index-1",
+        "last_success_at": "2026-10-27T09:00:00+00:00",
+        "fallback_used": false,
+        "model": {
+          "name": "llama3.2:3b",
+          "prompt_version": "studentpath-answer-v1"
+        },
+        "notice": "Information only. This is not an eligibility decision or legal advice."
+      }
+    },
+    {
+      "case_id": "E01",
+      "category": "supported",
+      "trial": 10,
+      "seconds": 0.7255132499994943,
+      "http_status": 200,
+      "failures": [],
+      "response": {
+        "request_id": "eval-E01-10",
+        "status": "answered",
+        "answer": "a blue form",
+        "checklist": [],
+        "sources": [
+          {
+            "source_id": "SYN001",
+            "snapshot_id": "SYN001:eval-v1",
+            "source_version": 1,
+            "url": "https://example.org/eval/1",
+            "passage": "The fictional application requires a blue form."
+          }
+        ],
+        "index_version": "synthetic-index-1",
+        "last_success_at": "2026-10-27T09:00:00+00:00",
+        "fallback_used": false,
+        "model": {
+          "name": "llama3.2:3b",
+          "prompt_version": "studentpath-answer-v1"
+        },
+        "notice": "Information only. This is not an eligibility decision or legal advice."
+      }
+    },
+    {
+      "case_id": "E01",
+      "category": "supported",
+      "trial": 11,
+      "seconds": 0.6794570420024684,
+      "http_status": 200,
+      "failures": [],
+      "response": {
+        "request_id": "eval-E01-11",
+        "status": "answered",
+        "answer": "a blue form",
+        "checklist": [],
+        "sources": [
+          {
+            "source_id": "SYN001",
+            "snapshot_id": "SYN001:eval-v1",
+            "source_version": 1,
+            "url": "https://example.org/eval/1",
+            "passage": "The fictional application requires a blue form."
+          }
+        ],
+        "index_version": "synthetic-index-1",
+        "last_success_at": "2026-10-27T09:00:00+00:00",
+        "fallback_used": false,
+        "model": {
+          "name": "llama3.2:3b",
+          "prompt_version": "studentpath-answer-v1"
+        },
+        "notice": "Information only. This is not an eligibility decision or legal advice."
+      }
+    },
+    {
+      "case_id": "E01",
+      "category": "supported",
+      "trial": 12,
+      "seconds": 0.6897702080023009,
+      "http_status": 200,
+      "failures": [],
+      "response": {
+        "request_id": "eval-E01-12",
+        "status": "answered",
+        "answer": "a blue form",
+        "checklist": [],
+        "sources": [
+          {
+            "source_id": "SYN001",
+            "snapshot_id": "SYN001:eval-v1",
+            "source_version": 1,
+            "url": "https://example.org/eval/1",
+            "passage": "The fictional application requires a blue form."
+          }
+        ],
+        "index_version": "synthetic-index-1",
+        "last_success_at": "2026-10-27T09:00:00+00:00",
+        "fallback_used": false,
+        "model": {
+          "name": "llama3.2:3b",
+          "prompt_version": "studentpath-answer-v1"
+        },
+        "notice": "Information only. This is not an eligibility decision or legal advice."
+      }
+    },
+    {
+      "case_id": "E01",
+      "category": "supported",
+      "trial": 13,
+      "seconds": 0.6934939170023426,
+      "http_status": 200,
+      "failures": [],
+      "response": {
+        "request_id": "eval-E01-13",
+        "status": "answered",
+        "answer": "a blue form",
+        "checklist": [],
+        "sources": [
+          {
+            "source_id": "SYN001",
+            "snapshot_id": "SYN001:eval-v1",
+            "source_version": 1,
+            "url": "https://example.org/eval/1",
+            "passage": "The fictional application requires a blue form."
+          }
+        ],
+        "index_version": "synthetic-index-1",
+        "last_success_at": "2026-10-27T09:00:00+00:00",
+        "fallback_used": false,
+        "model": {
+          "name": "llama3.2:3b",
+          "prompt_version": "studentpath-answer-v1"
+        },
+        "notice": "Information only. This is not an eligibility decision or legal advice."
+      }
+    },
+    {
+      "case_id": "E01",
+      "category": "supported",
+      "trial": 14,
+      "seconds": 0.7230850829946576,
+      "http_status": 200,
+      "failures": [],
+      "response": {
+        "request_id": "eval-E01-14",
+        "status": "answered",
+        "answer": "a blue form",
+        "checklist": [],
+        "sources": [
+          {
+            "source_id": "SYN001",
+            "snapshot_id": "SYN001:eval-v1",
+            "source_version": 1,
+            "url": "https://example.org/eval/1",
+            "passage": "The fictional application requires a blue form."
+          }
+        ],
+        "index_version": "synthetic-index-1",
+        "last_success_at": "2026-10-27T09:00:00+00:00",
+        "fallback_used": false,
+        "model": {
+          "name": "llama3.2:3b",
+          "prompt_version": "studentpath-answer-v1"
+        },
+        "notice": "Information only. This is not an eligibility decision or legal advice."
+      }
+    },
+    {
+      "case_id": "E01",
+      "category": "supported",
+      "trial": 15,
+      "seconds": 0.68230904200027,
+      "http_status": 200,
+      "failures": [],
+      "response": {
+        "request_id": "eval-E01-15",
+        "status": "answered",
+        "answer": "a blue form",
+        "checklist": [],
+        "sources": [
+          {
+            "source_id": "SYN001",
+            "snapshot_id": "SYN001:eval-v1",
+            "source_version": 1,
+            "url": "https://example.org/eval/1",
+            "passage": "The fictional application requires a blue form."
+          }
+        ],
+        "index_version": "synthetic-index-1",
+        "last_success_at": "2026-10-27T09:00:00+00:00",
+        "fallback_used": false,
+        "model": {
+          "name": "llama3.2:3b",
+          "prompt_version": "studentpath-answer-v1"
+        },
+        "notice": "Information only. This is not an eligibility decision or legal advice."
+      }
+    },
+    {
+      "case_id": "E01",
+      "category": "supported",
+      "trial": 16,
+      "seconds": 0.6893741669991869,
+      "http_status": 200,
+      "failures": [],
+      "response": {
+        "request_id": "eval-E01-16",
+        "status": "answered",
+        "answer": "a blue form",
+        "checklist": [],
+        "sources": [
+          {
+            "source_id": "SYN001",
+            "snapshot_id": "SYN001:eval-v1",
+            "source_version": 1,
+            "url": "https://example.org/eval/1",
+            "passage": "The fictional application requires a blue form."
+          }
+        ],
+        "index_version": "synthetic-index-1",
+        "last_success_at": "2026-10-27T09:00:00+00:00",
+        "fallback_used": false,
+        "model": {
+          "name": "llama3.2:3b",
+          "prompt_version": "studentpath-answer-v1"
+        },
+        "notice": "Information only. This is not an eligibility decision or legal advice."
+      }
+    },
+    {
+      "case_id": "E01",
+      "category": "supported",
+      "trial": 17,
+      "seconds": 0.6824984999984736,
+      "http_status": 200,
+      "failures": [],
+      "response": {
+        "request_id": "eval-E01-17",
+        "status": "answered",
+        "answer": "a blue form",
+        "checklist": [],
+        "sources": [
+          {
+            "source_id": "SYN001",
+            "snapshot_id": "SYN001:eval-v1",
+            "source_version": 1,
+            "url": "https://example.org/eval/1",
+            "passage": "The fictional application requires a blue form."
+          }
+        ],
+        "index_version": "synthetic-index-1",
+        "last_success_at": "2026-10-27T09:00:00+00:00",
+        "fallback_used": false,
+        "model": {
+          "name": "llama3.2:3b",
+          "prompt_version": "studentpath-answer-v1"
+        },
+        "notice": "Information only. This is not an eligibility decision or legal advice."
+      }
+    },
+    {
+      "case_id": "E01",
+      "category": "supported",
+      "trial": 18,
+      "seconds": 0.6865754579994245,
+      "http_status": 200,
+      "failures": [],
+      "response": {
+        "request_id": "eval-E01-18",
+        "status": "answered",
+        "answer": "a blue form",
+        "checklist": [],
+        "sources": [
+          {
+            "source_id": "SYN001",
+            "snapshot_id": "SYN001:eval-v1",
+            "source_version": 1,
+            "url": "https://example.org/eval/1",
+            "passage": "The fictional application requires a blue form."
+          }
+        ],
+        "index_version": "synthetic-index-1",
+        "last_success_at": "2026-10-27T09:00:00+00:00",
+        "fallback_used": false,
+        "model": {
+          "name": "llama3.2:3b",
+          "prompt_version": "studentpath-answer-v1"
+        },
+        "notice": "Information only. This is not an eligibility decision or legal advice."
+      }
+    },
+    {
+      "case_id": "E01",
+      "category": "supported",
+      "trial": 19,
+      "seconds": 0.7098514590034029,
+      "http_status": 200,
+      "failures": [],
+      "response": {
+        "request_id": "eval-E01-19",
+        "status": "answered",
+        "answer": "a blue form",
+        "checklist": [],
+        "sources": [
+          {
+            "source_id": "SYN001",
+            "snapshot_id": "SYN001:eval-v1",
+            "source_version": 1,
+            "url": "https://example.org/eval/1",
+            "passage": "The fictional application requires a blue form."
+          }
+        ],
+        "index_version": "synthetic-index-1",
+        "last_success_at": "2026-10-27T09:00:00+00:00",
+        "fallback_used": false,
+        "model": {
+          "name": "llama3.2:3b",
+          "prompt_version": "studentpath-answer-v1"
+        },
+        "notice": "Information only. This is not an eligibility decision or legal advice."
+      }
+    },
+    {
+      "case_id": "E01",
+      "category": "supported",
+      "trial": 20,
+      "seconds": 0.7176747909979895,
+      "http_status": 200,
+      "failures": [],
+      "response": {
+        "request_id": "eval-E01-20",
+        "status": "answered",
+        "answer": "a blue form",
+        "checklist": [],
+        "sources": [
+          {
+            "source_id": "SYN001",
+            "snapshot_id": "SYN001:eval-v1",
+            "source_version": 1,
+            "url": "https://example.org/eval/1",
+            "passage": "The fictional application requires a blue form."
+          }
+        ],
+        "index_version": "synthetic-index-1",
+        "last_success_at": "2026-10-27T09:00:00+00:00",
+        "fallback_used": false,
+        "model": {
+          "name": "llama3.2:3b",
+          "prompt_version": "studentpath-answer-v1"
+        },
+        "notice": "Information only. This is not an eligibility decision or legal advice."
+      }
+    },
+    {
+      "case_id": "E02",
+      "category": "supported",
+      "trial": 1,
+      "seconds": 0.7862588749994757,
+      "http_status": 200,
+      "failures": [],
+      "response": {
+        "request_id": "eval-E02-1",
+        "status": "answered",
+        "answer": "9am",
+        "checklist": [],
+        "sources": [
+          {
+            "source_id": "SYN001",
+            "snapshot_id": "SYN001:eval-v1",
+            "source_version": 1,
+            "url": "https://example.org/eval/1",
+            "passage": "The fictional office opens at 9am."
+          }
+        ],
+        "index_version": "synthetic-index-1",
+        "last_success_at": "2026-10-27T09:00:00+00:00",
+        "fallback_used": false,
+        "model": {
+          "name": "llama3.2:3b",
+          "prompt_version": "studentpath-answer-v1"
+        },
+        "notice": "Information only. This is not an eligibility decision or legal advice."
+      }
+    },
+    {
+      "case_id": "E02",
+      "category": "supported",
+      "trial": 2,
+      "seconds": 0.6745682920009131,
+      "http_status": 200,
+      "failures": [],
+      "response": {
+        "request_id": "eval-E02-2",
+        "status": "answered",
+        "answer": "9am",
+        "checklist": [],
+        "sources": [
+          {
+            "source_id": "SYN001",
+            "snapshot_id": "SYN001:eval-v1",
+            "source_version": 1,
+            "url": "https://example.org/eval/1",
+            "passage": "The fictional office opens at 9am."
+          }
+        ],
+        "index_version": "synthetic-index-1",
+        "last_success_at": "2026-10-27T09:00:00+00:00",
+        "fallback_used": false,
+        "model": {
+          "name": "llama3.2:3b",
+          "prompt_version": "studentpath-answer-v1"
+        },
+        "notice": "Information only. This is not an eligibility decision or legal advice."
+      }
+    },
+    {
+      "case_id": "E02",
+      "category": "supported",
+      "trial": 3,
+      "seconds": 0.6998028329981025,
+      "http_status": 200,
+      "failures": [],
+      "response": {
+        "request_id": "eval-E02-3",
+        "status": "answered",
+        "answer": "9am",
+        "checklist": [],
+        "sources": [
+          {
+            "source_id": "SYN001",
+            "snapshot_id": "SYN001:eval-v1",
+            "source_version": 1,
+            "url": "https://example.org/eval/1",
+            "passage": "The fictional office opens at 9am."
+          }
+        ],
+        "index_version": "synthetic-index-1",
+        "last_success_at": "2026-10-27T09:00:00+00:00",
+        "fallback_used": false,
+        "model": {
+          "name": "llama3.2:3b",
+          "prompt_version": "studentpath-answer-v1"
+        },
+        "notice": "Information only. This is not an eligibility decision or legal advice."
+      }
+    },
+    {
+      "case_id": "E02",
+      "category": "supported",
+      "trial": 4,
+      "seconds": 0.721998374996474,
+      "http_status": 200,
+      "failures": [],
+      "response": {
+        "request_id": "eval-E02-4",
+        "status": "answered",
+        "answer": "9am",
+        "checklist": [],
+        "sources": [
+          {
+            "source_id": "SYN001",
+            "snapshot_id": "SYN001:eval-v1",
+            "source_version": 1,
+            "url": "https://example.org/eval/1",
+            "passage": "The fictional office opens at 9am."
+          }
+        ],
+        "index_version": "synthetic-index-1",
+        "last_success_at": "2026-10-27T09:00:00+00:00",
+        "fallback_used": false,
+        "model": {
+          "name": "llama3.2:3b",
+          "prompt_version": "studentpath-answer-v1"
+        },
+        "notice": "Information only. This is not an eligibility decision or legal advice."
+      }
+    },
+    {
+      "case_id": "E02",
+      "category": "supported",
+      "trial": 5,
+      "seconds": 0.7664908329970785,
+      "http_status": 200,
+      "failures": [],
+      "response": {
+        "request_id": "eval-E02-5",
+        "status": "answered",
+        "answer": "9am",
+        "checklist": [],
+        "sources": [
+          {
+            "source_id": "SYN001",
+            "snapshot_id": "SYN001:eval-v1",
+            "source_version": 1,
+            "url": "https://example.org/eval/1",
+            "passage": "The fictional office opens at 9am."
+          }
+        ],
+        "index_version": "synthetic-index-1",
+        "last_success_at": "2026-10-27T09:00:00+00:00",
+        "fallback_used": false,
+        "model": {
+          "name": "llama3.2:3b",
+          "prompt_version": "studentpath-answer-v1"
+        },
+        "notice": "Information only. This is not an eligibility decision or legal advice."
+      }
+    },
+    {
+      "case_id": "E02",
+      "category": "supported",
+      "trial": 6,
+      "seconds": 0.7560569159977604,
+      "http_status": 200,
+      "failures": [],
+      "response": {
+        "request_id": "eval-E02-6",
+        "status": "answered",
+        "answer": "9am",
+        "checklist": [],
+        "sources": [
+          {
+            "source_id": "SYN001",
+            "snapshot_id": "SYN001:eval-v1",
+            "source_version": 1,
+            "url": "https://example.org/eval/1",
+            "passage": "The fictional office opens at 9am."
+          }
+        ],
+        "index_version": "synthetic-index-1",
+        "last_success_at": "2026-10-27T09:00:00+00:00",
+        "fallback_used": false,
+        "model": {
+          "name": "llama3.2:3b",
+          "prompt_version": "studentpath-answer-v1"
+        },
+        "notice": "Information only. This is not an eligibility decision or legal advice."
+      }
+    },
+    {
+      "case_id": "E02",
+      "category": "supported",
+      "trial": 7,
+      "seconds": 0.7325752079996164,
+      "http_status": 200,
+      "failures": [],
+      "response": {
+        "request_id": "eval-E02-7",
+        "status": "answered",
+        "answer": "9am",
+        "checklist": [],
+        "sources": [
+          {
+            "source_id": "SYN001",
+            "snapshot_id": "SYN001:eval-v1",
+            "source_version": 1,
+            "url": "https://example.org/eval/1",
+            "passage": "The fictional office opens at 9am."
+          }
+        ],
+        "index_version": "synthetic-index-1",
+        "last_success_at": "2026-10-27T09:00:00+00:00",
+        "fallback_used": false,
+        "model": {
+          "name": "llama3.2:3b",
+          "prompt_version": "studentpath-answer-v1"
+        },
+        "notice": "Information only. This is not an eligibility decision or legal advice."
+      }
+    },
+    {
+      "case_id": "E02",
+      "category": "supported",
+      "trial": 8,
+      "seconds": 0.721615832997486,
+      "http_status": 200,
+      "failures": [],
+      "response": {
+        "request_id": "eval-E02-8",
+        "status": "answered",
+        "answer": "9am",
+        "checklist": [],
+        "sources": [
+          {
+            "source_id": "SYN001",
+            "snapshot_id": "SYN001:eval-v1",
+            "source_version": 1,
+            "url": "https://example.org/eval/1",
+            "passage": "The fictional office opens at 9am."
+          }
+        ],
+        "index_version": "synthetic-index-1",
+        "last_success_at": "2026-10-27T09:00:00+00:00",
+        "fallback_used": false,
+        "model": {
+          "name": "llama3.2:3b",
+          "prompt_version": "studentpath-answer-v1"
+        },
+        "notice": "Information only. This is not an eligibility decision or legal advice."
+      }
+    }
+  ],
+  "finished_at": "2026-11-16T12:41:29.475172+00:00",
+  "completed": false,
+  "summary": {
+    "requests": 28,
+    "automatic_passes": 28,
+    "failures_by_check": {}
+  }
+}

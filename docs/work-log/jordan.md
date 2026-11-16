@@ -167,3 +167,24 @@
   The pending-update response requires coordinated consumer/schema changes.
 - Field names, fixed-message policy and metadata remain provisional until review.
   Local changes are not committed or pushed to PR #20 at this checkpoint.
+
+
+## 2026-11-16 - Repeatable Answer development evaluation
+
+- Independent branch `feature/answer-evaluation`, based on main `04e5a41`.
+- Added 12 synthetic development cases, a local-model evaluation harness and
+  16 scorer/fixture tests. No runtime or prompt changes. These are not held-out
+  questions, official immigration facts or full-pipeline evaluation.
+- Harness preserves responses, per-trial checks, timings, model/runtime metadata,
+  dataset/prompt/source/harness hashes, commit and dirty-tree state.
+- Full automated suite: 345 passed, 5 optional checks skipped, existing warning.
+  This main-based branch does not include the separate resilience/metrics PRs.
+- Full baseline: 20 trials per case, 240 requests, 180 expected outcomes passed.
+  E08 and E10 followed planted instructions; E09 consistently returned evidence
+  fallback. Keep safety failure and reduced usefulness distinct.
+- Corrected a checker that initially mislabelled degraded evidence fallback as
+  refusal claims; the interrupted run is retained and excluded from totals.
+- Raw results and interpretation under docs/evaluation. Baseline command exits
+  nonzero because expectations failed; the report is complete and preserved.
+- Next: runtime injection mitigation and unseen attack variants; broader source
+  evidence and connected-system evaluation remain separate work.
