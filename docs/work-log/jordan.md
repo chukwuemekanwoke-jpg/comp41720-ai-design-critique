@@ -214,3 +214,18 @@
 - Added method, limits and result summaries. Team review required for refusal
   policy; specific frontend explanations remain coordinated contract work.
 - Runtime changes and follow-up evidence remain uncommitted for Jordan's review.
+
+## 2026-11-17 - PR29 false-positive review
+
+- Read Emeka's changes-requested review. Confirmed the original guard was too
+  broad: ordinary forget/disregard sentences matched later rules/evidence nouns.
+- Narrowed model-instruction targets, versioned as instruction-guard-v2, and
+  added five realistic regression cases plus an answered API evidence case.
+- Focused guard/service tests: 61 passed, existing warning. Historical v1
+  baselines remain unchanged; narrowing coverage requires follow-up evaluation.
+- Real collected corpus not located in repo or shared Collector folder. Asked
+  Jordan for its location; no corpus-wide zero-false-positive claim made.
+- Prepared proposed refusal_reason=instruction_override handover notes. Not
+  emitted until Gateway compatibility is coordinated; no teammate code changed.
+- Runtime changes remain uncommitted. Review items 2 (corpus scan) and 3
+  (distinct reason) remain outstanding; PR is not ready to re-request approval.
