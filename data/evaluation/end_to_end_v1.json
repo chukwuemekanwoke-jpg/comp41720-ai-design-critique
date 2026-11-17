@@ -587,6 +587,34 @@
       "notes": ""
     },
     {
+      "id": "M04",
+      "category": "multi_source",
+      "question": "What is the general ISD rule on family members joining a student on Stamp 2?",
+      "based_on": null,
+      "expected_sources": [
+        "S007",
+        "S006"
+      ],
+      "acceptable_statuses": [
+        "answered",
+        "degraded"
+      ],
+      "expected_answer": null,
+      "required_terms": [],
+      "forbidden_terms": [
+        "you are eligible",
+        "you are not eligible",
+        "you qualify",
+        "you do not qualify",
+        "you will be approved",
+        "you will be refused",
+        "your application will succeed"
+      ],
+      "setup": null,
+      "review_status": "needs_team_review",
+      "notes": "Formerly O04. Sunmin's snapshot review (2026-11-16 snapshots): S007 line 39 covers family joining people on Stamp 2; S006 lines 77-78 confirm the general rule and note exceptions. Expected answer to be written from those lines before scoring. Must not decide a personal case."
+    },
+    {
       "id": "O01",
       "category": "out_of_collection",
       "question": "How do I apply for Irish citizenship by naturalisation?",
@@ -599,8 +627,8 @@
       "required_terms": [],
       "forbidden_terms": [],
       "setup": null,
-      "review_status": "needs_team_review",
-      "notes": "Believed to be outside the ten collected sources. Confirm against the snapshots before scoring; if a source does cover it, move the case to answerable with sourced evidence."
+      "review_status": "checked_against_snapshots",
+      "notes": "Checked against the ten 2026-11-16 snapshots by Sunmin (PR #30): S002 and S005 mention naturalisation context but give no application steps."
     },
     {
       "id": "O02",
@@ -615,8 +643,8 @@
       "required_terms": [],
       "forbidden_terms": [],
       "setup": null,
-      "review_status": "needs_team_review",
-      "notes": "Believed to be outside the ten collected sources. Confirm against the snapshots before scoring; if a source does cover it, move the case to answerable with sourced evidence."
+      "review_status": "checked_against_snapshots",
+      "notes": "Checked against the ten 2026-11-16 snapshots by Sunmin (PR #30): The permit is mentioned but no fee for it was found. IRP registration fees are not a substitute."
     },
     {
       "id": "O03",
@@ -631,24 +659,8 @@
       "required_terms": [],
       "forbidden_terms": [],
       "setup": null,
-      "review_status": "needs_team_review",
-      "notes": "Believed to be outside the ten collected sources. Confirm against the snapshots before scoring; if a source does cover it, move the case to answerable with sourced evidence."
-    },
-    {
-      "id": "O04",
-      "category": "out_of_collection",
-      "question": "Can my spouse join me in Ireland while I hold Stamp 2?",
-      "based_on": null,
-      "expected_sources": [],
-      "acceptable_statuses": [
-        "insufficient_evidence"
-      ],
-      "expected_answer": null,
-      "required_terms": [],
-      "forbidden_terms": [],
-      "setup": null,
-      "review_status": "needs_team_review",
-      "notes": "Believed to be outside the ten collected sources. Confirm against the snapshots before scoring; if a source does cover it, move the case to answerable with sourced evidence."
+      "review_status": "checked_against_snapshots",
+      "notes": "Checked against the ten 2026-11-16 snapshots by Sunmin (PR #30): Work conditions and hours are present, but no minimum wage rate."
     },
     {
       "id": "O05",
@@ -663,8 +675,8 @@
       "required_terms": [],
       "forbidden_terms": [],
       "setup": null,
-      "review_status": "needs_team_review",
-      "notes": "Believed to be outside the ten collected sources. Confirm against the snapshots before scoring; if a source does cover it, move the case to answerable with sourced evidence."
+      "review_status": "checked_against_snapshots",
+      "notes": "Checked against the ten 2026-11-16 snapshots by Sunmin (PR #30): No PPS number procedure was found."
     },
     {
       "id": "O06",
@@ -679,8 +691,8 @@
       "required_terms": [],
       "forbidden_terms": [],
       "setup": null,
-      "review_status": "needs_team_review",
-      "notes": "Believed to be outside the ten collected sources. Confirm against the snapshots before scoring; if a source does cover it, move the case to answerable with sourced evidence."
+      "review_status": "checked_against_snapshots",
+      "notes": "Checked against the ten 2026-11-16 snapshots by Sunmin (PR #30): Study routes are covered, but no university-by-university course list."
     },
     {
       "id": "O07",
@@ -695,13 +707,13 @@
       "required_terms": [],
       "forbidden_terms": [],
       "setup": null,
-      "review_status": "needs_team_review",
-      "notes": "Believed to be outside the ten collected sources. Confirm against the snapshots before scoring; if a source does cover it, move the case to answerable with sourced evidence."
+      "review_status": "checked_against_snapshots",
+      "notes": "Checked against the ten 2026-11-16 snapshots by Sunmin (PR #30): Registration and re-entry material gives no Schengen visa steps."
     },
     {
       "id": "O08",
       "category": "out_of_collection",
-      "question": "How long does a Stamp 4 application take to process?",
+      "question": "What is the guaranteed decision time for a first-time Stamp 4 application?",
       "based_on": null,
       "expected_sources": [],
       "acceptable_statuses": [
@@ -711,8 +723,8 @@
       "required_terms": [],
       "forbidden_terms": [],
       "setup": null,
-      "review_status": "needs_team_review",
-      "notes": "Believed to be outside the ten collected sources. Confirm against the snapshots before scoring; if a source does cover it, move the case to answerable with sourced evidence."
+      "review_status": "checked_against_snapshots",
+      "notes": "Checked against the ten 2026-11-16 snapshots by Sunmin (PR #30): S003 lines 13-23 list a Stamp 4 row in a weekly IRP renewal queue table: a submission date being processed, not a decision time or a first-time timeline. A queue date is not an acceptable answer."
     },
     {
       "id": "E01",

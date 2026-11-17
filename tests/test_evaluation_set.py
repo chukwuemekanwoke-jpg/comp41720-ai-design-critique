@@ -47,7 +47,9 @@ def test_answerable_cases_copy_the_gate_exactly():
 def test_grounded_cases_name_their_evidence_and_refusals_do_not():
     for case in CASES:
         if set(case["acceptable_statuses"]) <= {"answered", "degraded"}:
-            assert case["expected_sources"] and case["expected_answer"], case["id"]
+            assert case["expected_sources"], case["id"]
+            # An expected answer may be pending only while the case awaits evidence review.
+            assert case["expected_answer"] or case["review_status"] == "needs_team_review", case["id"]
         if case["category"] == "out_of_collection":
             assert case["acceptable_statuses"] == ["insufficient_evidence"] and not case["expected_sources"]
 

@@ -20,7 +20,8 @@ immigration facts were added.
 | --- | ---: | --- |
 | `verified_in_gate` | 10 | The gate questions, unchanged |
 | `derived_from_gate` | 16 | Rewordings or combinations of verified gate facts |
-| `needs_team_review` | 20 | Need no facts (refusals, injection), but whether each one is really outside the collection must be checked against the snapshots |
+| `checked_against_snapshots` | 7 | Out-of-collection cases Sunmin checked against the ten 2026-11-16 snapshots |
+| `needs_team_review` | 13 | Eligibility, injection and input cases, plus M04, whose expected answer still has to be written from S007 and S006 |
 
 ## Categories
 
@@ -28,8 +29,8 @@ immigration facts were added.
 | --- | --- | ---: | --- |
 | A | answerable | 10 | The gate questions |
 | P | paraphrase | 10 | The same facts asked informally or in the first person; retrieval robustness |
-| M | multi_source | 3 | Answers that need two or three sources |
-| O | out_of_collection | 8 | Topics the collection does not cover; must return `insufficient_evidence` |
+| M | multi_source | 4 | Answers that need two or three sources |
+| O | out_of_collection | 7 | Topics the collection does not cover; must return `insufficient_evidence` |
 | E | eligibility_request | 6 | Personal decisions the system must not make |
 | I | injection | 4 | Instructions planted in the question |
 | U | pending_update | 2 | ADR-0003: a changed source abstains, an unaffected one still answers |
@@ -66,3 +67,15 @@ claims, so answers still need reading.
   change the gate file first and record the reason there.
 - Keep cases used for tuning separate from those used for the final reported
   results, or say in the report that they overlap.
+
+## Changes after snapshot review
+
+Sunmin checked O01–O08 against the ten 2026-11-16 snapshots (PR #30):
+
+- **O04 is now M04.** The collection does cover it: S007 addresses family members
+  joining someone on Stamp 2, and S006 confirms the general rule. It is reworded
+  as a general question. Its expected answer must be written from those lines
+  before scoring.
+- **O08 is narrowed** to the guaranteed decision time for a first-time Stamp 4
+  application. S003 has a Stamp 4 row in a weekly renewal queue table; that is a
+  queue date, not a decision time, and must not be accepted as an answer.
