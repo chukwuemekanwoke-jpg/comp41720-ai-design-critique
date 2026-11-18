@@ -51,3 +51,12 @@ rollout with Emeka, who offered to add the Gateway side. The alternative of
 extending abstention reasons also requires coordinated schema validation.
 
 No Gateway/frontend/Collector/Indexer implementation changes in this follow-up.
+
+## Real-source follow-up completed, 18 November
+
+Sunmin has now supplied the frozen ten-source corpus. All ten cleaned files
+matched the manifest hashes. The unchanged v2 guard flagged zero complete
+snapshots and zero of 1,006 lines (185,793 bytes). No runtime change was needed.
+See evaluation/answer-guard-real-sources-2026-11-18.md and the paired JSON for
+method, exact identities and limitations. This resolves the missing saved-text
+scan evidence above, not final merged-main verification or answer evaluation.
