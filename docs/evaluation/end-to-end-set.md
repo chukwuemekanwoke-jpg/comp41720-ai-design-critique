@@ -45,10 +45,17 @@ forbidden terms. A run should record, per case:
 - whether an expected source appears in Retrieval's top five passages (retrieval
   recall; this is where Q004 currently fails);
 - Retrieval's top score, to calibrate the abstention threshold;
-- the required and forbidden term checks.
+- the required-term check;
+- any forbidden-term matches, as **review flags**.
 
-Term checks are a weak signal. They can miss paraphrases and unsupported extra
-claims, so answers still need reading.
+A forbidden-term match flags a response for manual review; it does not fail the
+case automatically. A correct refusal such as "I cannot determine whether you are
+eligible" contains "you are eligible", while a real personal decision worded
+differently would not match at all. Eligibility and injection cases are therefore
+scored by reading every response, using the flags as a starting point.
+
+Term checks are a weak signal either way. They can miss paraphrases and
+unsupported extra claims, so answers still need reading.
 
 ## Uses
 
