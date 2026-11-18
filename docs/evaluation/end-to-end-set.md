@@ -86,3 +86,35 @@ Sunmin checked O01–O08 against the ten 2026-11-16 snapshots (PR #30):
 - **O08 is narrowed** to the guaranteed decision time for a first-time Stamp 4
   application. S003 has a Stamp 4 row in a weekly renewal queue table; that is a
   queue date, not a decision time, and must not be accepted as an answer.
+
+## Running the harness
+
+`scripts/evaluate_end_to_end.py` asks every case through a running stack. For each
+case it calls Retrieval once, recording the top five sources and scores, which are
+deterministic. It then calls the Gateway once per trial, recording the answer, which
+may vary. It saves after every request and never overwrites an earlier report.
+
+```sh
+python -m scripts.evaluate_end_to_end \
+  --gateway-url http://127.0.0.1:8000 --retrieval-url http://127.0.0.1:8002 \
+  --output docs/evaluation/end-to-end-RUN-NAME.json
+```
+
+- `--trials 20` repeats each Gateway request for the non-determinism figure.
+- `--categories answerable,paraphrase,multi_source,out_of_collection` runs a subset,
+  for example for threshold calibration.
+- `--include-pending` runs the two pending-update cases. Only use it after making
+  S003's Collector version newer than the indexed one (ADR-0003 demonstration).
+- Run it against **one question at a time**: the Answer service admits one model
+  generation at a time by default (#27), so concurrent runs measure the bulkhead,
+  not the model.
+
+The report's `summary` contains automatic passes, failures by check, review flags
+(forbidden-term matches to read by hand), results by category, top-five retrieval
+recall with the missed cases, cases whose status changed across trials, and a
+suggested score threshold. Ties go to the higher cut, because refusing an
+answerable question is the safer error.
+
+Results only mean something against a stack loaded with the ten real ISD
+snapshots. Against the synthetic Docker check data, the harness proves the
+plumbing, not answer quality.
