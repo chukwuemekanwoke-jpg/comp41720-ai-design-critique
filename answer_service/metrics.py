@@ -22,6 +22,12 @@ class AnswerMetrics:
                             registry=self.registry)
         self.rejected = Counter('studentpath_answer_model_rejected', 'Requests rejected by the bulkhead.',
                                 registry=self.registry)
+        self.budget_rejections = Counter('studentpath_answer_budget_rejections',
+                                         'Model attempts denied by the daily ledger.',
+                                         ['reason'], registry=self.registry)
+        self.budget_charged = Counter('studentpath_answer_budget_charged_tokens',
+                                      'Conservative attempt allowances charged in this process.',
+                                      registry=self.registry)
         self.tokens = Counter('studentpath_answer_model_tokens', 'Tokens reported by Ollama; not a budget.',
                               ['kind'], registry=self.registry)
         self.missing_usage = Counter('studentpath_answer_model_usage_missing',

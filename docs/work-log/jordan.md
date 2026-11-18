@@ -239,3 +239,26 @@
   and 27 output tokens reported by Ollama, with active generation back at zero.
   This is a smoke check, not throughput or full token-budget evaluation.
 - Changes remain uncommitted for Jordan's review.
+
+## 2026-11-18 - Persistent daily model allowance
+
+- Separate `feature/answer-daily-budget`, based on metrics PR28 (`f042fe4`),
+  leaving approved PRs and the refusal-label branch unchanged.
+- Added SQLite admission ledger by UTC date, atomic check/increment across
+  processes, conservative context-plus-output charging before each attempt,
+  and no refunds for retries, failure, unknown usage or cancellation.
+- Exhaustion/unavailable ledger uses existing evidence-only fallback. Default
+  allowance 1,000,000 (118 default attempts), configurable path and limit.
+- Added charged/denied metrics and a Compose persistence overlay; no shared
+  service implementations or public response fields changed.
+- Tests isolate the default ledger with a fixture; explicit-path tests exercise
+  actual persistence, process concurrency, app restart and UTC rollover.
+- New tests: 21 passed. Full suite: 378 passed, 6 optional skips, existing warning.
+- Real local Ollama: first request answered, next request fell back, restarted app
+  still denied generation. Completed evidence and runnable opt-in demo saved.
+- Corrected a smoke-check assertion that matched Prometheus HELP text rather
+  than actual counter samples; this did not require a runtime change.
+- Old check-stack plus budget overlay validates. Docker recreation and final
+  combined main verification still required; no exact physical GPU-token or
+  distributed multi-host quota claim. Evaluation allowance needs explicit setup.
+- Implementation and evidence uncommitted for Jordan's review.

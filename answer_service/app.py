@@ -14,6 +14,7 @@ from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 from answer_service.metrics import AnswerMetrics
 
 from answer_service.config import Settings
+from answer_service.budget import DailyTokenBudget
 from answer_service.models import AnswerRequest, AnswerResponse, ErrorResponse
 from answer_service.ollama import OllamaAdapter
 from answer_service.service import build_answer
@@ -38,7 +39,10 @@ def create_app(
                 transport=transport,
                 trust_env=False,
             ) as client:
-                application.state.generator = OllamaAdapter(config, client, metrics=metrics)
+                application.state.generator = OllamaAdapter(
+                    config, client, metrics=metrics,
+                    budget=DailyTokenBudget(config.daily_budget_db, config.daily_token_limit),
+                )
                 yield
         else:
             yield

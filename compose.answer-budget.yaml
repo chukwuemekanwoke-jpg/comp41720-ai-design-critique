@@ -1,0 +1,10 @@
+# Overlay for the existing full stack; compatible with the rename in PR33.
+services:
+  answer:
+    environment:
+      ANSWER_DAILY_TOKEN_LIMIT: ${ANSWER_DAILY_TOKEN_LIMIT:-1000000}
+      ANSWER_DAILY_BUDGET_DB: /answer-budget/usage.sqlite3
+    volumes:
+      - answer-budget:/answer-budget
+volumes:
+  answer-budget:

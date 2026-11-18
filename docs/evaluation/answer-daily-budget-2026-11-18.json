@@ -1,0 +1,151 @@
+{
+  "at": "2026-11-18T11:04:13.305432+00:00",
+  "scope": "Actual host Ollama and Answer app via TestClient; no Gateway/Docker.",
+  "git_commit": "f042fe48f320c1a62014f521f2ec7362e6167192",
+  "dirty_tree": " M answer_service/app.py\n M answer_service/config.py\n M answer_service/metrics.py\n M answer_service/ollama.py\n?? answer_service/budget.py\n?? compose.answer-budget.yaml\n?? scripts/demo_answer_budget.py\n?? tests/conftest.py\n?? tests/test_answer_budget.py\n",
+  "source_hashes": {
+    "answer_service/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "answer_service/app.py": "ab9c52861780124e2820dff156717219b0926ec5b7ec821a55b137c03bfebf9d",
+    "answer_service/budget.py": "fde9ce908f65a7fed95717cdcd24951ed58bde52a70e196320e8e56ff1f4127d",
+    "answer_service/config.py": "055cbf3133d5fb6d116aafabea15d8b1cd8b76af1ebd7610045192da09acf53a",
+    "answer_service/metrics.py": "97318aa0272e3c6c93fad94aa9442b572736e03e3e44e9e2738469dc1b0d9b7f",
+    "answer_service/models.py": "73d5f1e9de86b6aa326382503f48d799505f0983be194e55a57482aec04c0ac8",
+    "answer_service/ollama.py": "d90001209f35b4ead9f42913e2e03b095bdd6cf5296e8b0ab44e7ac333d74d05",
+    "answer_service/service.py": "bc547396532dbe2001e956113e8be5ba4acab11c314e7406eaa5e73cf4d18924"
+  },
+  "daily_allowance": 8448,
+  "charge_per_attempt": 8448,
+  "model": "llama3.2:3b",
+  "ollama": {
+    "version": "0.40.16"
+  },
+  "installed_models": {
+    "models": [
+      {
+        "name": "llama3.2:3b",
+        "model": "llama3.2:3b",
+        "modified_at": "2026-10-27T14:39:04.556400127Z",
+        "size": 2019393189,
+        "digest": "a80c4f17acd55265feec403c7aef86be0c25983ab279d83f3bcd3abbcb5b8b72",
+        "details": {
+          "parent_model": "",
+          "format": "gguf",
+          "family": "llama",
+          "families": [
+            "llama"
+          ],
+          "parameter_size": "3.2B",
+          "quantization_level": "Q4_K_M",
+          "context_length": 131072,
+          "embedding_length": 3072,
+          "runner": "ggml"
+        },
+        "capabilities": [
+          "completion",
+          "tools"
+        ]
+      },
+      {
+        "name": "llama3.2:1b",
+        "model": "llama3.2:1b",
+        "modified_at": "2026-09-29T12:18:10.261413314+01:00",
+        "size": 1321098329,
+        "digest": "baf6a787fdffd633537aa2eb51cfd54cb93ff08e28040095462bb63daf552878",
+        "details": {
+          "parent_model": "",
+          "format": "gguf",
+          "family": "llama",
+          "families": [
+            "llama"
+          ],
+          "parameter_size": "1.2B",
+          "quantization_level": "Q8_0",
+          "context_length": 131072,
+          "embedding_length": 2048,
+          "runner": "ggml"
+        },
+        "capabilities": [
+          "completion",
+          "tools"
+        ]
+      }
+    ]
+  },
+  "responses": [
+    {
+      "request_id": "fc4fa5823e1740dda21402a23db3e061",
+      "status": "answered",
+      "answer": "a blue form",
+      "checklist": [],
+      "sources": [
+        {
+          "source_id": "SYN001",
+          "snapshot_id": "SYN001:fixture-v1",
+          "source_version": 1,
+          "url": "https://example.org/synthetic-guidance",
+          "passage": "Synthetic test only: the fictional application requires a blue form."
+        }
+      ],
+      "index_version": "synthetic-index-1",
+      "last_success_at": "2026-10-27T09:00:00+00:00",
+      "fallback_used": false,
+      "model": {
+        "name": "llama3.2:3b",
+        "prompt_version": "studentpath-answer-v1"
+      },
+      "notice": "Information only. This is not an eligibility decision or legal advice."
+    },
+    {
+      "request_id": "f06de919a18f4d1296db8df27337e036",
+      "status": "degraded",
+      "answer": null,
+      "checklist": [],
+      "sources": [
+        {
+          "source_id": "SYN001",
+          "snapshot_id": "SYN001:fixture-v1",
+          "source_version": 1,
+          "url": "https://example.org/synthetic-guidance",
+          "passage": "Synthetic test only: the fictional application requires a blue form."
+        }
+      ],
+      "index_version": "synthetic-index-1",
+      "last_success_at": "2026-10-27T09:00:00+00:00",
+      "fallback_used": true,
+      "model": {
+        "name": "evidence-only",
+        "prompt_version": "none"
+      },
+      "notice": "Information only. This is not an eligibility decision or legal advice."
+    },
+    {
+      "request_id": "d4a85f964a364373ac05dcafd6b1f064",
+      "status": "degraded",
+      "answer": null,
+      "checklist": [],
+      "sources": [
+        {
+          "source_id": "SYN001",
+          "snapshot_id": "SYN001:fixture-v1",
+          "source_version": 1,
+          "url": "https://example.org/synthetic-guidance",
+          "passage": "Synthetic test only: the fictional application requires a blue form."
+        }
+      ],
+      "index_version": "synthetic-index-1",
+      "last_success_at": "2026-10-27T09:00:00+00:00",
+      "fallback_used": true,
+      "model": {
+        "name": "evidence-only",
+        "prompt_version": "none"
+      },
+      "notice": "Information only. This is not an eligibility decision or legal advice."
+    }
+  ],
+  "observations": [
+    "First request answered",
+    "Second request fell back without budget for another attempt",
+    "New app instance with same ledger still denied generation"
+  ],
+  "limits": "Conservative context-plus-output admission charges, not exact measured daily usage. Temporary ledger deleted after test."
+}
