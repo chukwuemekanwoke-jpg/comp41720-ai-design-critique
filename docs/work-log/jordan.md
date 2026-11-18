@@ -168,6 +168,22 @@
 - Field names, fixed-message policy and metadata remain provisional until review.
   Local changes are not committed or pushed to PR #20 at this checkpoint.
 
+## 2026-11-16 - Answer contract alignment
+
+- Branch: `feature/answer-contract-alignment`, based on current main `6ab7007`.
+- Updated Answer OpenAPI to 0.3.0 and shared schemas to 1.2.0 to describe
+  the pending-update handover already implemented in PR #20.
+- Documented required nullable detection dates, source/version matching,
+  fixed policy-response metadata, HTTP 400 invalid decisions and HTTP 200
+  refusals without model generation. Normal Answer responses omit abstention.
+- Updated the contract inventory and mapping notes. Retrieval cache policy,
+  Gateway forwarding and frontend changes remain separate work.
+- Validation: all six OpenAPI documents passed; 40 existing abstention tests
+  passed with the existing TestClient warning; diff whitespace check passed.
+- Also validated pending, normal and explicit-null requests and actual API
+  responses against the OpenAPI schemas. Missing detected_at was rejected by
+  both the schema and the API. Contract dependencies installed from the existing
+  requirements-contracts.txt; dependency files and runtime code unchanged.
 
 ## 2026-11-16 - Repeatable Answer development evaluation
 
