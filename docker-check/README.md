@@ -81,9 +81,20 @@ It publishes one malformed marker message and removes only that marker from the
 dead-letter queue. Any other dead letters, from the running pipeline or earlier
 runs, are requeued untouched so they stay available for inspection.
 
+`seed` only collects into an empty Collector store. Compose re-runs it whenever a
+dependent service starts (for example `docker compose start indexer`), and seeding
+again would reset a page changed during a demonstration, so later runs skip with
+"Collector store exists; skipping seed".
+
 To change the startup fixture, edit `docker-check/LOCAL_PIPELINE.html`, rebuild,
-and rerun the `seed` service. The continuous relay/indexer then publishes its
-changed content. `seed` is an explicit collection pass, not a source scheduler.
+and re-collect it explicitly:
+
+```powershell
+$env:SEED_FORCE = "1"; docker compose -f compose.check.yaml run --rm seed; Remove-Item Env:SEED_FORCE
+```
+
+The continuous relay/indexer then publishes its changed content. `seed` is an
+explicit collection pass, not a source scheduler.
 
 Stop without deleting Collector or index state:
 

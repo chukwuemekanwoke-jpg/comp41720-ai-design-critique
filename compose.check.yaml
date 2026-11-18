@@ -22,7 +22,19 @@ services:
       retries: 20
   seed:
     <<: *python
-    command: [python, -m, source_collector, --manifest, docker-check/manifest.json, --db, /state/collector.sqlite3, --fixture-dir, docker-check]
+    # Compose re-runs this one-shot service whenever a dependent starts (for example
+    # `docker compose start indexer`). Seeding again would reset a changed fixture
+    # mid-demonstration, so only seed an empty store unless SEED_FORCE=1 is set.
+    command:
+      - sh
+      - -c
+      - >-
+        if [ -f /state/collector.sqlite3 ] && [ "$${SEED_FORCE:-0}" != 1 ]; then
+        echo 'Collector store exists; skipping seed (set SEED_FORCE=1 to re-collect the fixture).';
+        else exec python -m source_collector --manifest docker-check/manifest.json
+        --db /state/collector.sqlite3 --fixture-dir docker-check; fi
+    environment:
+      SEED_FORCE: ${SEED_FORCE:-0}
     volumes: [collector:/state]
   collector:
     <<: *python
