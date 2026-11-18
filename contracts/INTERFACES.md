@@ -8,7 +8,7 @@ remains the asynchronous update path. The browser connects only to the Gateway.
 | Frontend → Gateway questions | [Gateway](gateway.openapi.yaml) | REST orchestration implemented; frontend supports configured Gateway origin |
 | Gateway → Retrieval | [Retrieval](retrieval.openapi.yaml) | Matches local prototype; storage adapter pending |
 | Indexer SQLite → Retrieval | [Publication storage](../docs/indexer-retrieval-storage.md) | Published read views implemented; Retrieval read-only adapter pending |
-| Gateway → Answer | [Answer](answer.openapi.yaml) | PR #6 merged; Gateway mapping implemented and tested against actual ASGI API |
+| Gateway → Answer | [Answer](answer.openapi.yaml) | PR #6 and #20 merged; pending-update Gateway forwarding in PR #21 |
 | Indexer → Collector | [Collector](collector.openapi.yaml) | Existing snapshot API; unchanged |
 | Retrieval → Collector source status | [Collector](collector.openapi.yaml) | Additive read-only status API; [migration and comparison policy](../docs/collector-source-status.md); Retrieval wiring owned by Emeka |
 | Gateway → ingestion extension | [Ingestion](ingestion.openapi.yaml) | Proposal; collector/indexer owner approval required |
@@ -51,3 +51,23 @@ semantic support for every generated claim.
 
 Do not change another owner's service to force compatibility. See the
 [integration plan](../docs/frontend-gateway-integration.md) for acceptance checks.
+
+## Pending-update handover
+
+The Answer contract includes the optional `abstention` decision implemented in
+PR #20. See [the handover examples](../docs/answer-abstention-handoff.md) for
+complete request and response bodies. PR #21 coordinates Retrieval detection
+and Gateway forwarding; this contract update does not implement those parts.
+
+Gateway supplies `reason: pending_source_update` and affected source IDs, indexed
+and latest versions, and required nullable `detected_at`. Answer validates these
+against the supplied evidence. A valid decision returns HTTP 200 with
+`insufficient_evidence`, a fixed explanation and affected-source URLs under
+`abstention`; `answer` is null, `sources` and `checklist` are empty, and no model
+is called. Metadata is `policy-response` / `none` and `fallback_used` is false.
+Malformed decisions return HTTP 400. An omitted or null decision preserves
+normal processing; normal Answer responses omit the extension.
+
+Collector status caching and expiry are Retrieval policy, not Answer behaviour.
+The existing `last_success_at` retains its collection-freshness meaning; it is
+not the change-detection date.

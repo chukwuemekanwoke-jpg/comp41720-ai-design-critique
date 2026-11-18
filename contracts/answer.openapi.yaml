@@ -1,11 +1,11 @@
 openapi: 3.0.3
 info:
   title: StudentPath Answer Service alignment contract
-  version: 0.2.0
+  version: 0.3.0
   description: >-
-    Review draft aligned to PR 6 commit a73dfa8046a39b2cca7af4dc966256f43d7cded2.
-    PR 6 is merged. Gateway REST mapping is implemented against this boundary;
-    future contract changes still require Jordan's review.
+    Describes the implemented Answer Service, including the pending-update
+    handover merged in PR 20. Gateway forwarding is coordinated in PR 21;
+    this specification does not enable that integration by itself.
 paths:
   /v1/answers:
     post:
@@ -14,6 +14,10 @@ paths:
         X-Request-ID carries tracing. No request_id body field, passage_id or score
         is accepted. Evidence text must be preserved. Freshness is mandatory when
         sources are nonempty. Sources/versions must contain non-whitespace text.
+        Optional abstention carries Gateway's explicit pending-update decision;
+        Answer does not poll the Collector or decide cache-expiry policy.
+        A valid decision returns a fixed explanation without calling Ollama.
+        Invalid decisions return HTTP 400, not a model fallback.
       parameters:
         - {$ref: 'common.openapi.yaml#/components/parameters/RequestId'}
       requestBody:
@@ -32,9 +36,30 @@ paths:
                   items: {$ref: 'common.openapi.yaml#/components/schemas/Source'}
                 index_version: {type: string, minLength: 1, maxLength: 256}
                 last_success_at: {type: string, format: date-time, nullable: true, maxLength: 64}
+                abstention:
+                  type: object
+                  nullable: true
+                  additionalProperties: false
+                  required: [reason, affected_sources]
+                  description: >-
+                    Optional; omitted or null means normal processing. Affected source IDs
+                    must be unique and occur in sources. Every supplied passage for an
+                    affected source must match indexed_source_version and share one URL.
+                    latest_source_version must exceed indexed_source_version.
+                    These cross-field rules are enforced at runtime.
+                  properties:
+                    reason: {type: string, enum: [pending_source_update]}
+                    affected_sources:
+                      type: array
+                      minItems: 1
+                      maxItems: 10
+                      items: {$ref: 'common.openapi.yaml#/components/schemas/PendingSource'}
       responses:
         '200':
-          description: Answer, model refusal, or evidence-only fallback. Model failure is degraded, not an HTTP transport error.
+          description: >-
+            Answer, model refusal, pending-update policy refusal, or evidence-only
+            fallback. Pending-update refusals are HTTP 200 insufficient_evidence;
+            model failure is degraded, not an HTTP transport error.
           headers:
             X-Request-ID: {$ref: 'common.openapi.yaml#/components/headers/RequestId'}
           content:

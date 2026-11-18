@@ -29,7 +29,7 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [request_id, status, answer, checklist, sources, index_version, last_success_at, fallback_used, model, notice]
+                required: [request_id, status, answer, checklist, sources, index_version, last_success_at, fallback_used, model, notice, abstention]
                 properties:
                   request_id: {type: string}
                   status: {type: string, enum: [answered, insufficient_evidence, degraded]}
@@ -56,6 +56,25 @@ paths:
                       name: {type: string}
                       prompt_version: {type: string}
                   notice: {type: string}
+                  abstention:
+                    type: object
+                    nullable: true
+                    description: ADR-0003. Set only on an insufficient_evidence refusal caused by a pending source update.
+                    required: [reason, message, affected_sources]
+                    properties:
+                      reason: {type: string, enum: [pending_source_update]}
+                      message: {type: string}
+                      affected_sources:
+                        type: array
+                        items:
+                          type: object
+                          required: [source_id, indexed_source_version, latest_source_version, detected_at, url]
+                          properties:
+                            source_id: {type: string}
+                            indexed_source_version: {type: integer, minimum: 1}
+                            latest_source_version: {type: integer, minimum: 1}
+                            detected_at: {type: string, format: date-time, nullable: true}
+                            url: {type: string}
         '400': {$ref: 'common.openapi.yaml#/components/responses/Error'}
         '502': {$ref: 'common.openapi.yaml#/components/responses/Error'}
         '504': {$ref: 'common.openapi.yaml#/components/responses/Error'}
