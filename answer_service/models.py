@@ -182,6 +182,7 @@ class AnswerResponse(ContractModel):
     model: ModelInfo
     notice: str = NOTICE
     abstention: AbstentionResponse | None = None
+    refusal_reason: Literal["instruction_override"] | None = None
 
     @model_validator(mode="after")
     def require_coherent_policy_refusal(self) -> Self:
@@ -195,14 +196,26 @@ class AnswerResponse(ContractModel):
             or self.model.prompt_version != "none"
         ):
             raise ValueError("pending-update responses must be policy refusals without claims")
+        if self.refusal_reason is not None and (
+            self.status != "insufficient_evidence"
+            or self.answer is not None
+            or self.checklist
+            or self.sources
+            or self.fallback_used
+            or self.abstention is not None
+            or self.model.name != "policy-response"
+        ):
+            raise ValueError("instruction overrides must be policy refusals without claims")
         return self
 
     @model_serializer(mode="wrap")
-    def omit_unused_abstention(self, handler):
+    def omit_unused_policy_fields(self, handler):
         # Preserve every legacy field, including required null answer/freshness.
         body = handler(self)
         if self.abstention is None:
             body.pop("abstention", None)
+        if self.refusal_reason is None:
+            body.pop("refusal_reason", None)
         return body
 
 

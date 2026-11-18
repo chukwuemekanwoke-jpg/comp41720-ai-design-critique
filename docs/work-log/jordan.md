@@ -245,3 +245,21 @@
   emitted until Gateway compatibility is coordinated; no teammate code changed.
 - Runtime changes remain uncommitted. Review items 2 (corpus scan) and 3
   (distinct reason) remain outstanding; PR is not ready to re-request approval.
+
+## 2026-11-18 - Distinct instruction-refusal reason
+
+- Separate `feature/answer-refusal-reason` branch from PR29 head `8acc303`;
+  left the existing PR branches and prepared worktrees unchanged.
+- Added optional instruction_override response reason, emitted only on guard
+  refusals. Ordinary responses omit it; required nulls remain. Validation rejects
+  reasons combined with pending updates, evidence, claims, fallback or non-refusal
+  status. Requests cannot set the response-only field.
+- Updated Answer OpenAPI and reused the exact shared-field definition already
+  present in Emeka's #33 to reduce schema drift. No Gateway/frontend service edits.
+- Nineteen new tests. Full suite 390 passed, 5 optional skips, existing warning;
+  all six contracts validate and diff check passes.
+- Temporary integration with actual #33 Gateway code (`95fbc02`) passed 108
+  targeted tests, including real in-process app handover with mocked model HTTP.
+- Documented consumer-before-producer rollout. Real-source scan, daily token
+  ceiling and frontend/metric reason breakdown remain separate follow-ups.
+- Changes uncommitted for Jordan's review.

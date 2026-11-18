@@ -58,6 +58,7 @@ async def build_answer(
             last_success_at=payload.last_success_at,
             fallback_used=False,
             model=ModelInfo(name="policy-response", prompt_version=GUARD_VERSION),
+            refusal_reason="instruction_override",
         )
     has_evidence = bool(payload.sources)
     if has_evidence and generator is not None:

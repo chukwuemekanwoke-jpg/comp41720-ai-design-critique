@@ -51,3 +51,13 @@ rollout with Emeka, who offered to add the Gateway side. The alternative of
 extending abstention reasons also requires coordinated schema validation.
 
 No Gateway/frontend/Collector/Indexer implementation changes in this follow-up.
+
+## Update, 18 November: agreed label follow-up
+
+Emeka approved v2 and confirmed the optional refusal_reason field on #29.
+The agreement is now implemented on the separate `feature/answer-refusal-reason`
+branch, with API/schema checks and a temporary integration check against his
+Gateway #33 code. See [the handover and deployment order](answer-refusal-reason.md).
+The proposed/not-implemented section above records the 17 November state;
+it is superseded by this update. Do not deploy Answer emission before compatible
+Gateway support. The collected-source scan remains outstanding.
