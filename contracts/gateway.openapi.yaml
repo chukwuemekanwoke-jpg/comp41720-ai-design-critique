@@ -29,7 +29,7 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [request_id, status, answer, checklist, sources, index_version, last_success_at, fallback_used, model, notice, abstention]
+                required: [request_id, status, answer, checklist, sources, index_version, last_success_at, fallback_used, model, notice, abstention, refusal_reason]
                 properties:
                   request_id: {type: string}
                   status: {type: string, enum: [answered, insufficient_evidence, degraded]}
@@ -69,6 +69,13 @@ paths:
                         minItems: 1
                         maxItems: 10
                         items: {$ref: 'common.openapi.yaml#/components/schemas/AffectedSourceDetail'}
+                  refusal_reason:
+                    type: string
+                    nullable: true
+                    enum: [instruction_override, null]
+                    description: >-
+                      Set only on an insufficient_evidence refusal made by the Answer service's
+                      instruction guard (#29); null otherwise. Never set together with abstention.
         '400': {$ref: 'common.openapi.yaml#/components/responses/Error'}
         '502': {$ref: 'common.openapi.yaml#/components/responses/Error'}
         '504': {$ref: 'common.openapi.yaml#/components/responses/Error'}

@@ -24,6 +24,11 @@ Collector fixture → durable outbox → continuous relay → RabbitMQ local que
 continuous Indexer → persistent SQLite index → read-only Retrieval → Gateway →
 Answer → frontend.
 
+Retrieval also polls the Collector's source status (`COLLECTOR_BASE_URL`). A
+question whose evidence comes from a source with a detected but unindexed change
+abstains with the source and detection date (ADR-0003); stopping the `indexer`
+service after changing a fixture demonstrates it.
+
 Indexer and Retrieval share the `index` Docker volume. Only Indexer writes it;
 Retrieval mounts it read-only and opens SQLite with `mode=ro`. Every request
 resolves its generation and reads its passages in one transaction. Retained
