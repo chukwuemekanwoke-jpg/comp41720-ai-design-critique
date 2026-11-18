@@ -123,3 +123,22 @@ Do not silently disable enforcement or discard budget-triggered fallbacks.
 
 Parameter meanings: [Ollama Modelfile reference](https://docs.ollama.com/modelfile).
 Reported usage fields: [Ollama chat API](https://docs.ollama.com/api/chat).
+
+### Docker and frontend follow-up
+
+An isolated combined PR snapshot was checked with actual local llama3.2:3b
+and synthetic Collector/Indexer evidence. A 16,896 allowance admitted two
+8,448-token attempt reservations. The website showed “blue” and “ten euro”;
+the third question displayed the existing degraded message and source link.
+
+After replacing only the Answer container with its named volume retained,
+the next browser question still fell back. SQLite remained at 16,896; the new
+process recorded one exhausted-budget denial and zero outgoing model attempts.
+No Gateway or frontend code changes were needed. The website does not show a
+budget meter or a distinct budget-exhaustion explanation.
+
+Exact branch revisions, container IDs and before/after metrics are recorded in
+[evidence](evaluation/answer-budget-docker-2026-11-18.json), with a
+[website screenshot](evaluation/answer-budget-frontend-2026-11-18.jpg).
+This verifies the temporary combined snapshot, not final merged main or
+real-source answer quality.

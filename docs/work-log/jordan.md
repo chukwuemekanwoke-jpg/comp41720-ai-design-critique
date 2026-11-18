@@ -262,3 +262,14 @@
   combined main verification still required; no exact physical GPU-token or
   distributed multi-host quota claim. Evaluation allowance needs explicit setup.
 - Implementation and evidence uncommitted for Jordan's review.
+
+### 18 November: daily allowance through Docker and the website
+
+- Tested an isolated combination of current budget, refusal-label and Gateway
+  Docker branches with synthetic indexed sources and actual local Ollama.
+- Two browser questions answered; the next used the existing evidence fallback.
+- Replaced Answer container only, retaining its named volume. A further browser
+  question still fell back; persisted charge stayed 16,896 and new process made
+  zero model attempts. Saved metrics, exact revisions and website screenshot.
+- Documentation/evidence follow-up only. Final merged-main verification and
+  real-source evaluation remain pending. These follow-up files are uncommitted.
