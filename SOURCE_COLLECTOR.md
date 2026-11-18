@@ -33,7 +33,7 @@ Use a project virtual environment. Create an untracked `.env` with your own
 `RABBITMQ_USER` and `RABBITMQ_PASSWORD` values. Do not commit credentials.
 
 ```powershell
-docker compose up -d --wait rabbitmq
+docker compose -f compose.broker.yaml up -d --wait rabbitmq
 # Replace placeholders; percent-encode special characters in URL credentials.
 $env:RABBITMQ_URL = 'amqp://<user>:<password>@localhost:5672/%2F'
 python -m source_collector --manifest data/demo_manifest.json --db collector.sqlite3 --fixture-dir demo_pages
@@ -46,7 +46,7 @@ Compose binds AMQP (5672) and the management UI (15672) to loopback only and
 stores broker data in a named volume. `.env` configures Compose; the Python
 relay reads its process environment and does not load `.env` automatically.
 Changing initial broker credentials does not change users in an existing volume.
-`docker compose down` stops the demo while retaining messages; `down -v` deletes
+`docker compose -f compose.broker.yaml down` stops the demo while retaining messages; `down -v` deletes
 broker data and should only be used when intentionally resetting the demo.
 
 | Variable | Default / requirement |

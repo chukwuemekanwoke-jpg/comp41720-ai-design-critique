@@ -67,11 +67,11 @@ the two missing connections; the new code adds both locally.
 From this checkout:
 
 ```powershell
-docker compose -f compose.check.yaml build tests
-docker compose -f compose.check.yaml up -d --no-build
-docker compose -f compose.check.yaml restart web
-docker compose -f compose.check.yaml run --rm tests
-docker compose -f compose.check.yaml run --rm product-check
+docker compose build tests
+docker compose up -d --no-build
+docker compose restart web
+docker compose run --rm tests
+docker compose run --rm product-check
 ```
 
 Restarting nginx refreshes service addresses after backend container recreation.
@@ -90,7 +90,7 @@ To change the startup fixture, edit `docker-check/LOCAL_PIPELINE.html`, rebuild,
 and re-collect it explicitly:
 
 ```powershell
-$env:SEED_FORCE = "1"; docker compose -f compose.check.yaml run --rm seed; Remove-Item Env:SEED_FORCE
+$env:SEED_FORCE = "1"; docker compose run --rm seed; Remove-Item Env:SEED_FORCE
 ```
 
 The continuous relay/indexer then publishes its changed content. `seed` is an
@@ -99,7 +99,7 @@ explicit collection pass, not a source scheduler.
 Stop without deleting Collector or index state:
 
 ```powershell
-docker compose -f compose.check.yaml down
+docker compose down
 ```
 
 Only nginx publishes a host port, on loopback 8088. RabbitMQ's fixed credentials
