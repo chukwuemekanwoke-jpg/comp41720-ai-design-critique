@@ -20,8 +20,8 @@ immigration facts were added.
 | --- | ---: | --- |
 | `verified_in_gate` | 10 | The gate questions, unchanged |
 | `derived_from_gate` | 16 | Rewordings or combinations of verified gate facts |
-| `checked_against_snapshots` | 7 | Out-of-collection cases Sunmin checked against the ten 2026-11-16 snapshots |
-| `needs_team_review` | 13 | Eligibility, injection and input cases, plus M04, whose expected answer still has to be written from S007 and S006 |
+| `checked_against_snapshots` | 8 | The seven out-of-collection cases Sunmin checked against the ten 2026-11-16 snapshots, and M04, whose expected answer is worded from S007 and S006 |
+| `needs_team_review` | 12 | Eligibility, injection and input cases; they need no facts, but their responses are read by hand |
 
 ## Categories
 
@@ -81,8 +81,8 @@ Sunmin checked O01–O08 against the ten 2026-11-16 snapshots (PR #30):
 
 - **O04 is now M04.** The collection does cover it: S007 addresses family members
   joining someone on Stamp 2, and S006 confirms the general rule. It is reworded
-  as a general question. Its expected answer must be written from those lines
-  before scoring.
+  as a general question. Its expected answer is worded from S007 line 39 and
+  S006 lines 77–78.
 - **O08 is narrowed** to the guaranteed decision time for a first-time Stamp 4
   application. S003 has a Stamp 4 row in a weekly renewal queue table; that is a
   queue date, not a decision time, and must not be accepted as an answer.

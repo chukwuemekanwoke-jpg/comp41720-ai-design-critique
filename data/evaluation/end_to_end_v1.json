@@ -603,8 +603,10 @@
         "answered",
         "degraded"
       ],
-      "expected_answer": null,
-      "required_terms": [],
+      "expected_answer": "In general, family members are not permitted to join a non-EEA national on a student permission (Stamp 2A, 2, 1A, 1G) and must apply for a visa in their own right; there are some very exceptional circumstances where it may be permitted.",
+      "required_terms": [
+        "visa"
+      ],
       "forbidden_terms": [
         "you are eligible",
         "you are not eligible",
@@ -615,8 +617,8 @@
         "your application will succeed"
       ],
       "setup": null,
-      "review_status": "needs_team_review",
-      "notes": "Formerly O04. Sunmin's snapshot review (2026-11-16 snapshots): S007 line 39 covers family joining people on Stamp 2; S006 lines 77-78 confirm the general rule and note exceptions. Expected answer to be written from those lines before scoring. Must not decide a personal case."
+      "review_status": "checked_against_snapshots",
+      "notes": "Formerly O04. Expected answer worded from the 2026-11-16 snapshots: S007 line 39 (family members generally not permitted on student permissions; apply for a visa in their own right) and S006 lines 77-78 (very exceptional circumstances). Must not decide a personal case."
     },
     {
       "id": "O01",
