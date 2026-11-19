@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: StudentPath Answer Service alignment contract
-  version: 0.3.0
+  version: 0.4.0
   description: >-
     Describes the implemented Answer Service, including the pending-update
     handover merged in PR 20. Gateway forwarding is coordinated in PR 21;
@@ -18,6 +18,11 @@ paths:
         Answer does not poll the Collector or decide cache-expiry policy.
         A valid decision returns a fixed explanation without calling Ollama.
         Invalid decisions return HTTP 400, not a model fallback.
+        Detected instruction overrides return HTTP 200 insufficient_evidence
+        with refusal_reason=instruction_override, null answer, empty claims and
+        fallback_used=false. This response never includes abstention. Answer
+        omits refusal_reason on all other responses. Deploy compatible Gateway
+        support (PR 33) before this producer change.
       parameters:
         - {$ref: 'common.openapi.yaml#/components/parameters/RequestId'}
       requestBody:
