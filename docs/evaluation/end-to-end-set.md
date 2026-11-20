@@ -108,6 +108,20 @@ python -m scripts.evaluate_end_to_end \
 - Run it against **one question at a time**: the Answer service admits one model
   generation at a time by default (#27), so concurrent runs measure the bulkhead,
   not the model.
+- **Raise the daily model allowance first** (#35). The default allows about 118
+  model attempts per UTC day (1,000,000 units at 8,448 per attempt, retries
+  included), and a 44-case, 20-trial run makes at least 880. After the allowance
+  runs out, Answer falls back to evidence-only, which looks the same as a model
+  timeout in the Gateway response and would be scored as one. Set
+  `ANSWER_DAILY_TOKEN_LIMIT` for the Answer service before starting, for example
+  `20000000` (about 2,370 attempts). With Docker, start the stack with
+  `-f compose.yaml -f compose.answer-budget.yaml`. After the run, check that
+  Answer's `/metrics` shows no `studentpath_answer_budget_rejections_total`
+  samples; if it does, discard or label the affected requests:
+
+  ```sh
+  docker compose exec answer python -c "import urllib.request; print(urllib.request.urlopen('http://127.0.0.1:8003/metrics').read().decode())" | grep budget
+  ```
 
 The report's `summary` contains automatic passes, failures by check, review flags
 (forbidden-term matches to read by hand), results by category, top-five retrieval
