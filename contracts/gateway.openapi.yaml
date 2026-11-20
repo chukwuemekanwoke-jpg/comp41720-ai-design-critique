@@ -66,15 +66,9 @@ paths:
                       message: {type: string}
                       affected_sources:
                         type: array
-                        items:
-                          type: object
-                          required: [source_id, indexed_source_version, latest_source_version, detected_at, url]
-                          properties:
-                            source_id: {type: string}
-                            indexed_source_version: {type: integer, minimum: 1}
-                            latest_source_version: {type: integer, minimum: 1}
-                            detected_at: {type: string, format: date-time, nullable: true}
-                            url: {type: string}
+                        minItems: 1
+                        maxItems: 10
+                        items: {$ref: 'common.openapi.yaml#/components/schemas/AffectedSourceDetail'}
         '400': {$ref: 'common.openapi.yaml#/components/responses/Error'}
         '502': {$ref: 'common.openapi.yaml#/components/responses/Error'}
         '504': {$ref: 'common.openapi.yaml#/components/responses/Error'}
