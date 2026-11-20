@@ -15,7 +15,9 @@ returns either that evidence as a labelled fallback or an insufficient-evidence
 response. This remains the default mode. Opt-in Ollama generation now adds a
 validated answer or model refusal, with evidence-only fallback on errors.
 Bounded transient retries and a per-process concurrency bulkhead are implemented
-on the resilience branch. A circuit breaker and exported metrics are not implemented.
+on the resilience branch. A circuit breaker is not implemented. The measurements branch adds a
+[Prometheus endpoint](answer-metrics.md) for request latency, outcomes, retries,
+concurrency and reported model tokens.
 See [ADR-0004](adr/0004-model-timeout-and-local-fallback.md).
 
 ## Responsibilities and boundaries

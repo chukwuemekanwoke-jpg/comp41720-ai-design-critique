@@ -279,3 +279,24 @@
 
 - Final default suite after adding the opt-in recovery test: 340 passed,
   6 skipped (four model checks and two broker checks), one existing warning.
+
+
+## 2026-11-16 - Answer metrics
+
+- Branch `feature/answer-metrics` builds on resilience commit `b3ae268`; keep
+  its review separate and merge the resilience dependency first.
+- Added a private-registry Prometheus `/metrics` endpoint, request/latency and
+  outcome metrics, outgoing attempts, retries, active/rejected model requests,
+  reported token counts and explicit missing-usage observations.
+- No content, source URLs or request IDs are labels. Metrics/health scrapes do
+  not count as answer requests. No public answer response fields changed.
+- Added prometheus-client to root and Answer runtime requirements; no lockfile
+  policy or package-manager change. Installed it locally with uv.
+- Seven measurement tests passed. Usage is reported by Ollama, not an exact
+  budget, complete accounting or cost estimate. Dashboard/scraper integration
+  remains coordinated work; documentation includes sample queries.
+- Full suite: 347 passed, 6 optional checks skipped, one existing warning.
+- One real llama3.2:3b request returned answered; `/metrics` exported 384 input
+  and 27 output tokens reported by Ollama, with active generation back at zero.
+  This is a smoke check, not throughput or full token-budget evaluation.
+- Changes remain uncommitted for Jordan's review.

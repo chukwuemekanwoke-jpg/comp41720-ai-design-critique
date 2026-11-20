@@ -2,12 +2,16 @@
 
 import re
 import uuid
+from time import perf_counter
 from contextlib import asynccontextmanager
 
 import httpx
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
+from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
+
+from answer_service.metrics import AnswerMetrics
 
 from answer_service.config import Settings
 from answer_service.models import AnswerRequest, AnswerResponse, ErrorResponse
@@ -21,6 +25,8 @@ def create_app(
     settings: Settings | None = None,
     transport: httpx.AsyncBaseTransport | None = None,
 ) -> FastAPI:
+    metrics = AnswerMetrics()
+
     @asynccontextmanager
     async def lifespan(application: FastAPI):
         config = settings if settings is not None else Settings.from_env()
@@ -32,7 +38,7 @@ def create_app(
                 transport=transport,
                 trust_env=False,
             ) as client:
-                application.state.generator = OllamaAdapter(config, client)
+                application.state.generator = OllamaAdapter(config, client, metrics=metrics)
                 yield
         else:
             yield
@@ -47,7 +53,16 @@ def create_app(
         request.state.request_id = (
             incoming if REQUEST_ID_PATTERN.fullmatch(incoming) else uuid.uuid4().hex
         )
-        response = await call_next(request)
+        measured = request.method == "POST" and request.url.path == "/v1/answers"
+        started = perf_counter()
+        status_class = "5xx"
+        try:
+            response = await call_next(request)
+            status_class = f"{response.status_code // 100}xx"
+        finally:
+            if measured:
+                metrics.requests.labels(status_class=status_class).inc()
+                metrics.duration.observe(perf_counter() - started)
         response.headers["X-Request-ID"] = request.state.request_id
         return response
 
@@ -71,9 +86,15 @@ def create_app(
         summary="Answer from supplied evidence, or return a labelled fallback",
     )
     async def answer(payload: AnswerRequest, request: Request) -> AnswerResponse:
-        return await build_answer(
+        result = await build_answer(
             payload, request.state.request_id, request.app.state.generator
         )
+        metrics.responses.labels(status=result.status).inc()
+        return result
+
+    @application.get("/metrics", include_in_schema=False)
+    def exported_metrics() -> Response:
+        return Response(generate_latest(metrics.registry), headers={"Content-Type": CONTENT_TYPE_LATEST})
 
     @application.get("/healthz")
     def healthz() -> dict[str, str]:
