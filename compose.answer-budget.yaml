@@ -1,4 +1,4 @@
-# Overlay for the existing full stack; compatible with the rename in PR33.
+# Compatibility overlay for earlier commands. Persistence is now in compose.yaml.
 services:
   answer:
     environment:

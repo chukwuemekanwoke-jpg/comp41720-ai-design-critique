@@ -62,18 +62,40 @@ Production configuration is read on startup. Keep the same ledger path mounted
 across worker/container restarts. SQLite stores dates and numeric totals, not
 questions, source text, user IDs or model output. SQLite files are Git-ignored.
 
-For the current full check stack:
+The default full stack includes the named `answer-budget` volume and ledger path
+`/answer-budget/usage.sqlite3`; no extra overlay is needed:
 
 ```sh
-docker compose -f compose.check.yaml -f compose.answer-budget.yaml up -d --build
+docker compose up -d --build
 ```
 
-After PR #33 renames the full stack to `compose.yaml`, use that filename instead.
-The overlay mounts a named `answer-budget` volume and sets the ledger path under
-it. `down` preserves that volume; deleting it resets the history. The overlay
-configuration validates; a real Docker recreation test is still required on the
-final merged stack. Without a volume, the file survives a process restart but
-not replacement of the container filesystem.
+`docker compose down` preserves the ledger. Deleting the named volume removes
+its history. The old `compose.answer-budget.yaml` remains a compatible optional
+overlay. A standalone container without a mounted ledger still loses history on
+replacement. The earlier Docker replacement check passed on a temporary combined
+stack; final merged-stack verification remains separate.
+
+### Long evaluation runs
+
+The default admits only 118 attempts per UTC day. Before an 880-request rerun,
+explicitly choose an evaluation allowance. For example, set this in the local
+`.env` used to start the evaluation stack:
+
+```text
+ANSWER_GENERATION_MODE=ollama
+OLLAMA_MODEL=llama3.2:3b
+ANSWER_DAILY_TOKEN_LIMIT=25000000
+```
+
+At 8,448 per attempt this covers 880 requests even if all use the maximum three
+attempts (22,302,720 units), provided prior charges that UTC day leave enough
+allowance. The default retry count is two. Recalculate for different context,
+output caps, prior use or extra runs. This example does not change the normal
+1,000,000 default or disable enforcement. Recreate Answer after setting changes.
+Record the chosen allowance and inspect `studentpath_answer_budget_rejections_total`
+before and after the run; separate budget-denied fallbacks from answer-quality
+results. Restarting does not clear prior usage, and process metrics reset even
+though ledger usage persists. Do not delete the ledger just to conceal denials.
 
 ## Observe and demonstrate
 
@@ -142,3 +164,12 @@ Exact branch revisions, container IDs and before/after metrics are recorded in
 [website screenshot](evaluation/answer-budget-frontend-2026-11-18.jpg).
 This verifies the temporary combined snapshot, not final merged main or
 real-source answer quality.
+
+## PR35 review follow-up
+
+Integrated the reviewed Docker branch (#33) into this feature branch so the
+default Compose stack can mount the Answer ledger automatically. PR33 remains
+a merge dependency; no Gateway or Collector logic was edited in this follow-up.
+The main generation allowance stays at 1,000,000; long runs require an explicit
+setting and recorded budget-denial observations. SQLite lock waits over 0.2 s
+can yield unavailable-ledger fallback under contention.

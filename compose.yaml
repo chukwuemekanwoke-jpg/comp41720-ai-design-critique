@@ -97,6 +97,9 @@ services:
       OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
       OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3.2:3b}
       OLLAMA_TIMEOUT_SECONDS: ${OLLAMA_TIMEOUT_SECONDS:-20}
+      ANSWER_DAILY_TOKEN_LIMIT: ${ANSWER_DAILY_TOKEN_LIMIT:-1000000}
+      ANSWER_DAILY_BUDGET_DB: /answer-budget/usage.sqlite3
+    volumes: [answer-budget:/answer-budget]
     # host.docker.internal is built in on Docker Desktop; this also makes it work on Linux.
     extra_hosts: ["host.docker.internal:host-gateway"]
   gateway:
@@ -147,3 +150,4 @@ volumes:
   collector:
   index:
   rabbitmq:
+  answer-budget:

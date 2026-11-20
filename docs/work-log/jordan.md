@@ -273,3 +273,16 @@
   zero model attempts. Saved metrics, exact revisions and website screenshot.
 - Documentation/evidence follow-up only. Final merged-main verification and
   real-source evaluation remain pending. These follow-up files are uncommitted.
+
+## PR35 review follow-up: default Docker persistence
+
+- Integrated reviewed PR33 into the budget branch as a dependency, without
+  merging either PR into main. Default Compose now mounts the Answer budget
+  volume and sets its path/allowance; the old overlay stays compatible.
+- Kept the 1,000,000 normal default; documented an explicit 25,000,000 example
+  for 880-request evaluations, retry accounting, prior usage and denial metrics.
+- Full local suite: 382 passed, 6 optional skips, existing warning. Six contracts
+  validate; normal Compose and compatibility overlay configurations validate.
+- Earlier live Docker/browser replacement evidence remains applicable to the
+  mounted-ledger mechanism; this configuration follow-up has not had a new live
+  Docker recreation run. Final combined main verification remains outstanding.
