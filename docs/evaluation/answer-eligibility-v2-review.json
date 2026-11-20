@@ -1,0 +1,14 @@
+{
+  "policy_version": "eligibility-policy-v2",
+  "guard_code_sha256": "5d675475fe428cc39bbe4374d51008bc9937e4a077800683017aff1933e660d1",
+  "baseline_review_sha256": "3a83d903af38c7e91a99d019ab5421b135bb91131c4b297353cc2fdf99527817",
+  "known_flagged_outputs_rechecked": 59,
+  "known_flagged_outputs_detected": 59,
+  "full_suite": {
+    "passed": 451,
+    "skipped": 5,
+    "warnings": 1
+  },
+  "scope": "Known-output replay and mocked model API regression tests, not a new real-model or 880-request evaluation. Original v1 live smoke remains historical.",
+  "label_status": "personal_decision is proposed, not emitted; await coordinated Gateway support."
+}

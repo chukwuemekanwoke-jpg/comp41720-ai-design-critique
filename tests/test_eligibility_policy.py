@@ -15,6 +15,8 @@ ROOT = Path(__file__).resolve().parents[1]
     'Will my Stamp 2 renewal be refused?',
     'Would I be eligible for this permission?',
     'Could you say whether I qualify for this programme?',
+    'Will I be deported?',
+    'Can you tell me whether my application will succeed?',
 ])
 @pytest.mark.parametrize('mode', ['ollama', 'evidence_only'])
 def test_personal_requests_bypass_model_and_fallback(question, mode):
@@ -27,7 +29,7 @@ def test_personal_requests_bypass_model_and_fallback(question, mode):
     assert body['status']=='insufficient_evidence'
     assert body['answer'] is None and body['sources']==[] and body['checklist']==[]
     assert body['fallback_used'] is False and 'refusal_reason' not in body
-    assert body['model']=={'name':'policy-response','prompt_version':'eligibility-policy-v1'}
+    assert body['model']=={'name':'policy-response','prompt_version':'eligibility-policy-v2'}
     assert body['index_version']==payload['index_version']
     assert body['last_success_at']==payload['last_success_at']
     assert body['request_id']==response.headers['X-Request-ID']=='eligibility-check'
@@ -36,6 +38,16 @@ def test_personal_requests_bypass_model_and_fallback(question, mode):
     'No, you are not eligible for Stamp 1G until final results are issued.',
     'Yes, you qualify for the graduate programme, provided the conditions hold.',
     'Your Stamp 1G application has been approved.',
+    "You're eligible for Stamp 1G.",
+    "You’re not eligible yet.",
+    'You will be eligible once your results issue.',
+    'You would qualify for the graduate programme.',
+    'Your application will succeed.',
+    'Your application is likely to be approved.',
+    'You meet the requirements for Stamp 1G.',
+    "You’d qualify for Stamp 1G.",
+    "You'll be eligible.",
+    'You will be deported.',
 ])
 @pytest.mark.parametrize('location', ['answer','checklist'])
 def test_generated_decisions_are_suppressed(claim,location):
@@ -52,6 +64,11 @@ def test_generated_decisions_are_suppressed(claim,location):
 
 @pytest.mark.parametrize('question', [
     'What are the eligibility requirements for Stamp 1G?',
+    'How can I check if I am eligible for Stamp 1G?',
+    "How can I check if I’m eligible for Stamp 1G?",
+    'How do I find out whether I qualify for the graduate programme?',
+    'Where can I see if I qualify for Stamp 1G?',
+    'What documents show whether I am eligible?',
     'What documents must I bring to registration?',
     'How do I apply for graduate permission?',
     'Tell me whether I am required to bring a passport.',
@@ -63,6 +80,7 @@ def test_general_guidance_is_not_personal_decision_request(question):
 
 @pytest.mark.parametrize('answer', [
     'I cannot determine whether you qualify.',
+    "I cannot determine whether you’re eligible.",
     'I cannot determine if you are eligible.',
     'If you are eligible, the application instructions describe the next steps.',
     'Applicants must meet the published conditions.',
@@ -76,3 +94,25 @@ def test_pending_update_takes_precedence_over_eligibility():
     payload['question']='Am I eligible for Stamp 1G?'
     with TestClient(create_app(Settings())) as client:body=client.post('/v1/answers',json=payload).json()
     assert body['abstention']['reason']=='pending_source_update'
+
+
+@pytest.mark.parametrize('question', [
+    'How can I check if I am eligible for Stamp 1G?',
+    'How do I find out whether I qualify for the graduate programme?',
+    'Where can I see if I qualify for Stamp 1G?',
+    'What documents show whether I am eligible?',
+])
+def test_review_how_to_questions_reach_generation(question):
+    payload=json.loads((ROOT/'data/answer_request_demo.json').read_text())
+    payload['question']=question
+    calls=[]
+    def model(request):
+        calls.append(request)
+        return httpx.Response(200,json={'model':'test-model','done':True,'done_reason':'stop',
+            'message':{'role':'assistant','content':json.dumps({
+                'status':'answered','answer':'Consult the published conditions.',
+                'checklist':[],'source_indices':[1]})}})
+    with TestClient(create_app(Settings(generation_mode='ollama'),transport=httpx.MockTransport(model))) as client:
+        body=client.post('/v1/answers',json=payload).json()
+    assert len(calls)==1 and body['status']=='answered'
+    assert 'refusal_reason' not in body

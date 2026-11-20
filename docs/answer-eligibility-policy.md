@@ -17,7 +17,7 @@ output rather than rewriting a decision or exposing an evidence fallback.
 
 Responses use existing insufficient_evidence, null answer, empty checklist and
 sources, fallback_used false, model policy-response and prompt_version
-eligibility-policy-v1. No new API fields or refusal_reason values are added.
+eligibility-policy-v2. No new API fields or refusal_reason values are added.
 Only instruction overrides use instruction_override. Request/index/freshness
 metadata are retained. Pending-update explanations retain precedence, followed
 by instruction-override detection, then the personal-decision policy.
@@ -51,3 +51,27 @@ Keep baseline results unchanged and run the agreed cases on a separately pinned
 final combined build. This branch depends on PR34; deploy Gateway PR33 before
 emitting PR34's instruction_override field. It does not contain PR35's budget
 or PR28's metrics. Only Answer implementation/tests and review docs changed.
+
+## PR36 review follow-up: policy version 2
+
+Emeka found that v1 refused how-to questions while missing everyday decision
+phrasing. The if/whether rule now requires an explicit tell-me/say/decide/confirm
+request. All four reviewed how/where/what questions reach generation in API
+regressions. Direct personal requests still bypass generation and fallback.
+
+Normalisation expands straight and curly apostrophe contractions. Output
+checks now cover you're/you'll/you'd, will/would eligibility, qualification,
+meeting requirements, likely approval, success and deportation claims. Both
+answer and checklist are checked. Uncertainty and conditional guidance tests
+remain passing. No questions, evidence or generated text are rewritten.
+
+Current full suite: 451 passed, 5 optional skips, existing warning. All 59 known
+flagged outputs remain detected. The paired v2 evidence JSON records the code
+hash and verification scope; the v1 real-model smoke and frozen baseline remain
+unchanged. No fresh live-model quality or final combined-stack claim is made.
+
+Proposed handover: refusal_reason=personal_decision for these policy refusals,
+omitted otherwise. This is not emitted yet. Coordinate Gateway/shared contract
+support before enabling it, as with instruction_override. Without it these
+responses retain the existing insufficient_evidence shape; policy version
+metadata identifies the Answer-side mechanism.
