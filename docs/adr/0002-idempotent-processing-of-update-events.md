@@ -1,91 +1,70 @@
 # ADR-0002: Idempotent processing of update events
 
-- **Status:** Draft (proposed)
-- **Service:** Indexing worker
-- **Owner:** Kezhen Zhang
-- **Date:** 2026-10-24
+- **Status:** Accepted
+- **Service / owner:** Indexing Worker / Kezhen Zhang
+- **Date:** 2026-10-24; finalised 2026-11-20
 
 ## Context
 
-The Source Collector publishes document-update events through RabbitMQ using
-at-least-once delivery. The Indexing Worker may therefore receive duplicate
-deliveries, messages after a worker restart, and updates that arrive out of
-order.
-
-The Collector assigns three identifiers with different meanings:
-
-- `event_id` identifies one logical update and remains unchanged on redelivery.
-- `source_version` is a positive integer that orders updates for one source.
-- `snapshot_id` identifies immutable content and may be reused if a page returns
-  to content seen previously.
-
-Deduplicating only by `snapshot_id` is incorrect. If a source changes from
-A to B and then back to A, source version 3 reuses snapshot A. The worker must
-activate version 3 rather than incorrectly leaving version 2 active.
+RabbitMQ delivers updates at least once. Worker restarts and delayed messages
+can cause duplicates or out-of-order updates. Content can change A → B → A:
+the third update is new even though it reuses A's immutable snapshot. Retrieval
+must see a complete collection generation throughout each request.
 
 ## Options considered
 
-1. **Deduplicate by snapshot ID.** This avoids rebuilding identical content,
-   but incorrectly skips a legitimate A → B → A content reversion.
-2. **Rely on queue-level deduplication.** This does not reliably survive worker
-   restarts, late redeliveries or the queue's deduplication window.
-3. **Use separate keys for delivery, ordering and content reuse.** Deduplicate
-   by `event_id`, order updates by `source_version`, and reuse indexed content
-   by `snapshot_id`.
+Snapshot-only deduplication incorrectly skips A → B → A. Broker-only
+deduplication does not provide our durable processing history. Updating the
+live index in place exposes partial builds. Choose durable event deduplication,
+per-source ordering and immutable candidates with atomic publication.
 
-## Decision (proposed)
+## Decision
 
-Use the three-key approach.
+Use `event_id` for duplicate detection, `source_version` for ordering within a
+source, and `snapshot_id` for content reuse. SQLite persists processing attempts,
+completed events, passages and source state. Completed duplicates are ACKed;
+older/equal source versions cannot replace newer active content.
 
-The worker keeps durable processing state keyed by `event_id`. If an event is
-already recorded as completed, a repeated delivery is acknowledged and skipped.
+Validate each event, fetch its immutable snapshot, and verify identity and the
+SHA-256 of UTF-8 `clean_text`. Deterministic passage IDs permit restart-safe
+upserts and content reuse. Build a candidate separately, carrying forward
+unchanged sources.
 
-For each `source_id`, the worker stores the last successfully activated
-`source_version`. An event with an older or equal version cannot replace a newer
-active version. `checked_at`, hashes and arrival order are not used for version
-ordering.
+**A half-built index can never become current through the publication API.**
+Only an existing `ready` candidate matching the event's source version and
+snapshot can activate. Its base must still match the current generation;
+otherwise discard and rebuild it, bounded to three publication attempts per
+processing attempt. One SQLite transaction changes generation statuses, source
+state, `current_index` and completed-event state. ACK follows commit. Published
+views exclude `building`, `ready` and `discarded` candidates. Retrieval reads
+the pointer and passages in one read transaction and pins that generation.
 
-For a newer event, the worker:
+Processing failures use durable attempt counts, three attempts by default,
+and the current consumer's fixed one-second delay before requeue. Invalid
+messages go directly to quarantine. The durable queue defaults to
+`studentpath.local.updates`; quarantine is `<work queue>.deadletter`. Publish
+the persistent original payload with `mandatory=True` and publisher confirms,
+then ACK; failed publication leaves the original unacknowledged for redelivery.
 
-1. validates the event;
-2. retrieves the immutable snapshot from the Collector using `snapshot_id`;
-3. verifies the response identity and SHA-256 of the UTF-8 `clean_text`;
-4. reuses existing passages and search data when the `snapshot_id` has already
-   been indexed, or creates them using restart-safe upserts;
-5. creates a new immutable index-version manifest;
-6. atomically switches the `current_index_version` pointer;
-7. records the event as completed durably; and
-8. acknowledges the RabbitMQ delivery.
-
-The worker uses manual acknowledgements. A failed attempt must not advance the
-active source version or mark the event as completed. Recoverable in-progress
-state must not permanently block a redelivered event after a worker crash.
-
-Processing failures use bounded retries with durable attempt tracking and
-exponential backoff. The proposed limit is three total processing attempts.
-After the final failure, the worker publishes a failure record to a durable
-dead-letter queue. The original message is acknowledged only after the
-dead-letter handoff is confirmed.
-
-Shared RabbitMQ queue arguments and final retry/DLQ names must be agreed with
-the Collector owner before changing the shared topology.
+**Dead-letter monitoring is metric only:** inspect quarantine queue depth
+(`messages_ready`) through RabbitMQ's management API/UI and correlate the
+consumer's JSON `dead_letter` action by event ID when available. Automated alerting and a
+dedicated Prometheus exporter are future work.
 
 ## Consequences
 
-- Repeated delivery of the same `event_id` does not create duplicate effects.
-- Out-of-order older events cannot replace a newer active source version.
-- A → B → A correctly activates A again as the newest logical version.
-- Previously indexed content can reuse passages and embeddings.
-- Manual acknowledgement permits safe recovery after a worker crash.
-- The worker needs durable processed-event, attempt and per-source-version
-  state.
-- Index writes and processing state may use different stores, so recovery must
-  handle partial failures without assuming one cross-store transaction.
-- Poison or inconsistent messages eventually reach the dead-letter queue
-  instead of blocking the work queue indefinitely.
+Duplicate delivery does not republish an index; obsolete updates cannot undo a
+newer source version, while A → B → A publishes a new generation reusing A's
+passages. Failed builds leave the previous generation available. Retaining
+published generations and processing history increases storage; pruning is
+future work. SQLite commit and RabbitMQ ACK are separate: redelivery remains
+possible, including duplicate quarantine entries after a crash during handoff.
 
-## Open questions
+## Verification
 
-- Final retry delays and dead-letter queue name.
-- Whether a dead-lettered event produces an alert or only an exported metric.
-- Final search/index storage technology.
+[PR #16](https://github.com/chukwuemekanwoke-jpg/comp41720-ai-design-critique/pull/16)
+implements publication. `tests/test_indexing_worker.py` covers duplicates,
+ordering, reversion, hidden candidates, atomic activation and stale/missing
+candidates; `tests/test_indexer_consumer.py` checks confirmed quarantine-before-ACK
+ordering and no ACK after failed publication. See the
+[storage contract](../indexer-retrieval-storage.md) for the reader interface.
