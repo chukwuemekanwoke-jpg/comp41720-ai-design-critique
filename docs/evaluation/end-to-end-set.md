@@ -86,3 +86,51 @@ Sunmin checked O01–O08 against the ten 2026-11-16 snapshots (PR #30):
 - **O08 is narrowed** to the guaranteed decision time for a first-time Stamp 4
   application. S003 has a Stamp 4 row in a weekly renewal queue table; that is a
   queue date, not a decision time, and must not be accepted as an answer.
+
+## Running the harness
+
+`scripts/evaluate_end_to_end.py` asks every case through a running stack. For each
+case it calls Retrieval once, recording the top five sources and scores, which are
+deterministic. It then calls the Gateway once per trial, recording the answer, which
+may vary. It saves after every request and never overwrites an earlier report.
+
+```sh
+python -m scripts.evaluate_end_to_end \
+  --gateway-url http://127.0.0.1:8000 --retrieval-url http://127.0.0.1:8002 \
+  --output docs/evaluation/end-to-end-RUN-NAME.json
+```
+
+- `--trials 20` repeats each Gateway request for the non-determinism figure.
+- `--categories answerable,paraphrase,multi_source,out_of_collection` runs a subset,
+  for example for threshold calibration.
+- `--include-pending` runs the two pending-update cases. Only use it after making
+  S003's Collector version newer than the indexed one (ADR-0003 demonstration).
+- Run it against **one question at a time**: the Answer service admits one model
+  generation at a time by default (#27), so concurrent runs measure the bulkhead,
+  not the model.
+- **Raise the daily model allowance first** (#35). The default allows about 118
+  model attempts per UTC day (1,000,000 units at 8,448 per attempt, retries
+  included), and a 44-case, 20-trial run makes at least 880. After the allowance
+  runs out, Answer falls back to evidence-only, which looks the same as a model
+  timeout in the Gateway response and would be scored as one. Set
+  `ANSWER_DAILY_TOKEN_LIMIT` for the Answer service before starting, for example
+  `20000000` (about 2,370 attempts). With Docker, start the stack with
+  `-f compose.yaml -f compose.answer-budget.yaml`. After the run, check that
+  Answer's `/metrics` shows no `studentpath_answer_budget_rejections_total`
+  samples; if it does, discard or label the affected requests:
+
+  ```sh
+  docker compose exec answer python -c "import urllib.request; print(urllib.request.urlopen('http://127.0.0.1:8003/metrics').read().decode())" | grep budget
+  ```
+
+The report's `summary` contains automatic passes, failures by check, review flags
+(forbidden-term matches to read by hand), results by category, top-five retrieval
+recall with the missed cases, cases whose status changed across trials, and a
+suggested score threshold. Candidate cuts sit midway between adjacent observed
+scores, plus one below the lowest and one above the highest, so refusing
+everything is also considered. Ties go to the higher cut, because refusing an
+answerable question is the safer error.
+
+Results only mean something against a stack loaded with the ten real ISD
+snapshots. Against the synthetic Docker check data, the harness proves the
+plumbing, not answer quality.
