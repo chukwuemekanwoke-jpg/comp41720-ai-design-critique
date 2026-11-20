@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 import time
 
+import httpx
 from fastapi.testclient import TestClient
 import pytest
 
@@ -60,3 +61,45 @@ def test_real_ollama_via_answer_service(scenario):
         assert body["fallback_used"] is True
     assert body["index_version"] == payload["index_version"]
     assert body["last_success_at"] == payload["last_success_at"]
+
+
+def test_injected_failure_then_real_model_recovery():
+    """Inject two 503s at the HTTP boundary, then forward to real Ollama.
+
+    This does not stop/restart Ollama or claim to test GPU cancellation.
+    """
+    payload = json.loads((Path(__file__).resolve().parents[1]
+                          / "data" / "answer_request_demo.json").read_text())
+
+    class RecoveringTransport(httpx.AsyncBaseTransport):
+        def __init__(self):
+            self.calls = 0
+            self.live = httpx.AsyncHTTPTransport()
+
+        async def handle_async_request(self, request):
+            self.calls += 1
+            if self.calls <= 2:
+                return httpx.Response(503, request=request)
+            return await self.live.handle_async_request(request)
+
+        async def aclose(self):
+            await self.live.aclose()
+
+    transport = RecoveringTransport()
+    settings = Settings(
+        generation_mode="ollama", model=os.getenv("OLLAMA_MODEL", "llama3.2:3b"),
+        ollama_url=os.getenv("OLLAMA_BASE_URL", "http://127.0.0.1:11434"),
+    )
+    with TestClient(create_app(settings, transport=transport)) as client:
+        failed = client.post("/v1/answers", json=payload).json()
+        assert failed["status"] == "degraded" and transport.calls == 2
+        assert failed["sources"] == payload["sources"] and failed["fallback_used"]
+        recovered = client.post("/v1/answers", json=payload).json()
+        assert recovered["status"] == "answered" and transport.calls == 3
+        assert "blue" in recovered["answer"].lower()
+        assert recovered["sources"] == payload["sources"]
+        assert not recovered["fallback_used"]
+    print(json.dumps({"scenario": "injected_503_then_live_recovery",
+                      "failed_status": failed["status"],
+                      "recovered_status": recovered["status"],
+                      "attempts": transport.calls}))
