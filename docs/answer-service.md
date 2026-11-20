@@ -14,7 +14,8 @@ Provide an independently runnable API that accepts retrieved evidence and
 returns either that evidence as a labelled fallback or an insufficient-evidence
 response. This remains the default mode. Opt-in Ollama generation now adds a
 validated answer or model refusal, with evidence-only fallback on errors.
-Retries, circuit breaker and metrics are not implemented yet.
+Bounded transient retries and a per-process concurrency bulkhead are implemented
+on the resilience branch. A circuit breaker and exported metrics are not implemented.
 See [ADR-0004](adr/0004-model-timeout-and-local-fallback.md).
 
 ## Responsibilities and boundaries
@@ -110,7 +111,10 @@ before invoking the Python command.
 | `ANSWER_GENERATION_MODE` | `evidence_only` | `evidence_only` or `ollama` |
 | `OLLAMA_BASE_URL` | `http://127.0.0.1:11434` | Ollama HTTP(S) origin, without credentials/path |
 | `OLLAMA_MODEL` | `llama3.2:3b` | Configurable model tag; provisional selection |
-| `OLLAMA_TIMEOUT_SECONDS` | `20` | Total client-side deadline for one model call |
+| `OLLAMA_TIMEOUT_SECONDS` | `20` | Total deadline shared by attempts and backoff |
+| `OLLAMA_MAX_ATTEMPTS` | `2` | Total attempts, including the first; range 1–3 |
+| `OLLAMA_RETRY_BACKOFF_SECONDS` | `0.2` | Initial exponential backoff; range 0–2 seconds |
+| `OLLAMA_MAX_CONCURRENT_GENERATIONS` | `1` | Admitted model requests per process; range 1–8 |
 | `OLLAMA_TEMPERATURE` | `0` | Generation temperature |
 | `OLLAMA_MAX_OUTPUT_TOKENS` | `256` | Generation token cap, including JSON structure |
 | `OLLAMA_CONTEXT_TOKENS` | `8192` | Requested model context size |
@@ -122,7 +126,21 @@ The character cap is not an exact token budget: multilingual or unusual text can
 tokenize differently. Context truncation by the model runtime is not fully
 detected here; tokenizer-aware budgeting remains follow-up work.
 The deadline bounds the caller's wait, not a guarantee that server-side GPU work
-stops immediately. This milestone makes one attempt only.
+stops immediately. Connection failures and HTTP 500/502/503/504 may be retried
+within the same total deadline. With three attempts, backoff is 0.2 then 0.4
+seconds by default. HTTP 429, other HTTP errors, read/write timeouts, malformed
+output and valid model refusals are not retried. A read timeout can leave work
+running in Ollama, so retrying it could duplicate expensive generation.
+
+The per-process bulkhead admits one generation request by default, including its
+retries/backoff. Excess requests immediately return the existing evidence-only
+fallback rather than queue. Admission is released on success, failure, deadline
+or cancellation. This bounds client-side concurrency, not Ollama's actual GPU
+work: a cancelled HTTP request may continue running server-side. Multiple worker
+processes each have their own limit; use one worker for this bounded local demo.
+This is a bulkhead, not a circuit breaker; failures do not open a timed circuit.
+The 20-second default remains below Gateway's 23-second Answer deadline. If
+overriding deadlines, keep the complete model budget below the Gateway budget.
 
 Inside Docker, loopback refers to that container, not the host Mac. A future
 Compose deployment must explicitly configure the Ollama address. No container
@@ -285,7 +303,7 @@ existing source shape and rejects this extra field until the contract changes.
 ## Follow-up milestones
 
 1. Broader model evaluation, semantic support checks and tokenizer-aware input budgeting.
-2. Bounded retries, circuit breaker, controlled failure/recovery tests and metrics/usage.
+2. Live-model failure/recovery validation and exported metrics/usage; assess whether a circuit breaker adds value beyond the bulkhead.
 3. Container startup and gateway integration, with measured hardware results.
 
 ## Verification and current limits
@@ -338,3 +356,14 @@ path. This deliberately changes evidence-only handling of detected attack text.
 See [the measured trade-off](evaluation/answer-guard-v1-2026-11-16.md): known
 attack claims were suppressed, while useful-answer expectations still fail on
 refused mixed requests. It is not a complete prompt-injection defence.
+
+## Resilience checks (2026-11-16)
+
+Run `python -m pytest -q tests/test_answer_resilience.py` for injected transient
+failure/recovery, exhausted retry fallback, terminal errors, total deadline
+including backoff, and concurrency rejection/cancellation recovery. These 21
+cases use mocked HTTP transport and need no Ollama process. They preserve the
+public response shape and provenance. The complete branch suite passed with
+340 tests and 6 optional cases skipped, plus the existing TestClient warning.
+This is not a live model throughput or recovery benchmark. Earlier milestone
+observations below/above remain historical, not evidence of current deployment.

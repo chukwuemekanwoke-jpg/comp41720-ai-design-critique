@@ -12,6 +12,9 @@ class Settings:
     ollama_url: str = "http://127.0.0.1:11434"
     model: str = "llama3.2:3b"
     timeout_seconds: float = 20.0
+    max_attempts: int = 2
+    retry_backoff_seconds: float = 0.2
+    max_concurrent_generations: int = 1
     temperature: float = 0.0
     max_output_tokens: int = 256
     context_tokens: int = 8192
@@ -39,6 +42,15 @@ class Settings:
             raise ValueError(
                 "OLLAMA_TIMEOUT_SECONDS must be between 0 (exclusive) and 120"
             )
+        for name, value, upper in (
+            ("OLLAMA_MAX_ATTEMPTS", self.max_attempts, 3),
+            ("OLLAMA_MAX_CONCURRENT_GENERATIONS", self.max_concurrent_generations, 8),
+        ):
+            if type(value) is not int or not 1 <= value <= upper:
+                raise ValueError(f"{name} must be an integer between 1 and {upper}")
+        if (not isfinite(self.retry_backoff_seconds)
+                or not 0 <= self.retry_backoff_seconds <= 2):
+            raise ValueError("OLLAMA_RETRY_BACKOFF_SECONDS must be between 0 and 2")
         if not isfinite(self.temperature) or not 0 <= self.temperature <= 2:
             raise ValueError("OLLAMA_TEMPERATURE must be between 0 and 2")
         if not 32 <= self.max_output_tokens <= 2048:
@@ -57,6 +69,9 @@ class Settings:
             ollama_url=os.getenv("OLLAMA_BASE_URL", "http://127.0.0.1:11434"),
             model=os.getenv("OLLAMA_MODEL", "llama3.2:3b"),
             timeout_seconds=float(os.getenv("OLLAMA_TIMEOUT_SECONDS", "20")),
+            max_attempts=int(os.getenv("OLLAMA_MAX_ATTEMPTS", "2")),
+            retry_backoff_seconds=float(os.getenv("OLLAMA_RETRY_BACKOFF_SECONDS", "0.2")),
+            max_concurrent_generations=int(os.getenv("OLLAMA_MAX_CONCURRENT_GENERATIONS", "1")),
             temperature=float(os.getenv("OLLAMA_TEMPERATURE", "0")),
             max_output_tokens=int(os.getenv("OLLAMA_MAX_OUTPUT_TOKENS", "256")),
             context_tokens=int(os.getenv("OLLAMA_CONTEXT_TOKENS", "8192")),

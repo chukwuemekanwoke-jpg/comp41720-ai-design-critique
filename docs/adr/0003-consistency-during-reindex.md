@@ -66,8 +66,9 @@ dead-lettered. Abstention continues until it is indexed.
   Gateway contracts, the Gateway forwarding and the frontend display still need
   the `abstention` field.
 - Each page edit makes that page's questions abstain until indexed. A cleaner
-  change alters every hash, so all sources go pending at once; schedule cleaner
-  changes away from demonstrations.
+  change only creates a new version for pages whose cleaned text actually
+  changes, but those pages all go pending at once; schedule cleaner changes away
+  from demonstrations.
 - Demonstration: change a fixture, stop the Indexer, ask an affected question
   (abstains with the date) and an unaffected one (answers), restart the Indexer,
   ask again (answers from the new generation).
