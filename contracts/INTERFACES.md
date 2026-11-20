@@ -6,11 +6,11 @@ remains the asynchronous update path. The browser connects only to the Gateway.
 | Boundary | Specification | Implementation state |
 |---|---|---|
 | Frontend → Gateway questions | [Gateway](gateway.openapi.yaml) | REST orchestration implemented; frontend supports configured Gateway origin |
-| Gateway → Retrieval | [Retrieval](retrieval.openapi.yaml) | Matches local prototype; storage adapter pending |
-| Indexer SQLite → Retrieval | [Publication storage](../docs/indexer-retrieval-storage.md) | Published read views implemented; Retrieval read-only adapter pending |
-| Gateway → Answer | [Answer](answer.openapi.yaml) | PR #6 and #20 merged; pending-update Gateway forwarding in PR #21 |
+| Gateway → Retrieval | [Retrieval](retrieval.openapi.yaml) | Implemented; reads published SQLite indexes (PR #17) and reports pending sources (PR #21) |
+| Indexer SQLite → Retrieval | [Publication storage](../docs/indexer-retrieval-storage.md) | Implemented; Retrieval reads published views read-only (PR #17) |
+| Gateway → Answer | [Answer](answer.openapi.yaml) | Implemented; pending-update handover in Answer (PR #20) and Gateway forwarding (PR #21) |
 | Indexer → Collector | [Collector](collector.openapi.yaml) | Existing snapshot API; unchanged |
-| Retrieval → Collector source status | [Collector](collector.openapi.yaml) | Additive read-only status API; [migration and comparison policy](../docs/collector-source-status.md); Retrieval wiring owned by Emeka |
+| Retrieval → Collector source status | [Collector](collector.openapi.yaml) | Additive read-only status API; [migration and comparison policy](../docs/collector-source-status.md); Retrieval polling and comparison implemented (PR #21) |
 | Gateway → ingestion extension | [Ingestion](ingestion.openapi.yaml) | Proposal; collector/indexer owner approval required |
 | Frontend → admin/collection endpoints | Gateway operations marked `x-implementation: proposed` | No authentication, upload or status backend yet |
 | Collector → RabbitMQ → Indexer | [Event schema](events/document-updated.schema.json) | Existing eight-field payload unchanged |
