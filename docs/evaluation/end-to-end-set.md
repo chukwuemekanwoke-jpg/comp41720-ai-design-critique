@@ -112,7 +112,9 @@ python -m scripts.evaluate_end_to_end \
 The report's `summary` contains automatic passes, failures by check, review flags
 (forbidden-term matches to read by hand), results by category, top-five retrieval
 recall with the missed cases, cases whose status changed across trials, and a
-suggested score threshold. Ties go to the higher cut, because refusing an
+suggested score threshold. Candidate cuts sit midway between adjacent observed
+scores, plus one below the lowest and one above the highest, so refusing
+everything is also considered. Ties go to the higher cut, because refusing an
 answerable question is the safer error.
 
 Results only mean something against a stack loaded with the ten real ISD

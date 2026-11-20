@@ -50,9 +50,21 @@ def test_pending_update_case_requires_the_abstention_reason():
 
 def test_threshold_separates_scores_and_reports_errors():
     best = best_threshold([0.8, 0.6, 0.3], [0.2, 0.1, 0.5])
-    assert best["threshold"] == 0.6
+    assert best["threshold"] == 0.55
     assert best["correct"] == 5 and best["answerable_below"] == 1 and best["refusals_at_or_above"] == 0
     assert best_threshold([], [0.1]) is None
+
+
+def test_threshold_can_refuse_everything():
+    # Refusals outscore every answerable case: the best cut is above all scores.
+    best = best_threshold([0.2], [0.9, 0.8])
+    assert best["threshold"] > 0.9
+    assert best["correct"] == 2 and best["answerable_below"] == 1 and best["refusals_at_or_above"] == 0
+
+
+def test_threshold_separates_a_refusal_tied_with_the_lowest_answerable_score():
+    best = best_threshold([0.5, 0.7], [0.3, 0.5])
+    assert best["correct"] == 3 and 0.5 < best["threshold"] <= 0.7
 
 
 def test_summary_counts_recall_and_changing_outcomes():
@@ -66,4 +78,4 @@ def test_summary_counts_recall_and_changing_outcomes():
     assert summary["retrieval_recall_at_5"] == {"cases": 1, "hits": 0, "misses": ["A01"]}
     assert summary["nondeterminism"]["cases_whose_status_changed"] == {"A01": {"answered": 1, "degraded": 1}}
     assert summary["by_category"]["out_of_collection"] == {"requests": 1, "passed": 1}
-    assert summary["threshold_suggestion"]["threshold"] == 0.4
+    assert summary["threshold_suggestion"]["threshold"] == 0.2

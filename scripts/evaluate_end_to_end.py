@@ -54,15 +54,21 @@ def best_threshold(grounded_scores, refusal_scores):
     candidate with the most correct classifications and its error counts. Ties go to
     the higher cut: refusing an answerable question is the safer error here than
     answering one the collection cannot support.
+
+    Cuts sit midway between adjacent observed scores, plus one below the lowest
+    (answer everything) and one above the highest (refuse everything), so every
+    distinct split of the scores is tried and no cut lands on a score itself.
     """
     if not grounded_scores or not refusal_scores:
         return None
-    candidates = sorted(set(grounded_scores) | set(refusal_scores) | {0.0})
+    scores = sorted(set(grounded_scores) | set(refusal_scores))
+    candidates = ([0.0] + [(low + high) / 2 for low, high in zip(scores, scores[1:])]
+                  + [scores[-1] + 0.01])
     best = None
     for cut in candidates:
         correct = sum(s >= cut for s in grounded_scores) + sum(s < cut for s in refusal_scores)
         if best is None or correct >= best["correct"]:
-            best = {"threshold": cut, "correct": correct,
+            best = {"threshold": round(cut, 4), "correct": correct,
                     "total": len(grounded_scores) + len(refusal_scores),
                     "answerable_below": sum(s < cut for s in grounded_scores),
                     "refusals_at_or_above": sum(s >= cut for s in refusal_scores)}
