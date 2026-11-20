@@ -60,6 +60,9 @@ def test_threshold_can_refuse_everything():
     best = best_threshold([0.2], [0.9, 0.8])
     assert best["threshold"] > 0.9
     assert best["correct"] == 2 and best["answerable_below"] == 1 and best["refusals_at_or_above"] == 0
+    # Kezhen's case from the #32 review: tied top refusals.
+    best = best_threshold([0.1], [0.9, 0.9])
+    assert best["threshold"] > 0.9 and best["correct"] == 2
 
 
 def test_threshold_separates_a_refusal_tied_with_the_lowest_answerable_score():
