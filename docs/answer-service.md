@@ -326,3 +326,24 @@ container startup, retries, circuit breaker or metrics are demonstrated yet.
 The service trusts the caller's provenance: it validates metadata shape, not
 that every supplied source actually belongs to the stated index version.
 The input bounds do not implement transport-level request-size limits or rate limiting.
+
+
+## Explicit instruction overrides
+
+The evaluation branch adds [a conservative instruction guard](answer-instruction-guard.md)
+before generation or evidence fallback. Detected overrides cause an existing
+`insufficient_evidence` envelope with policy metadata, not an upstream pending
+update. Passage text is preserved internally, not rewritten or returned on this
+path. This deliberately changes evidence-only handling of detected attack text.
+See [the measured trade-off](evaluation/answer-guard-v1-2026-11-16.md): known
+attack claims were suppressed, while useful-answer expectations still fail on
+refused mixed requests. It is not a complete prompt-injection defence.
+
+## Distinct instruction-refusal label
+
+The separate refusal-reason follow-up adds the optional response field
+`refusal_reason: instruction_override` only for a guard refusal. All other
+Answer responses omit it, including pending updates and ordinary missing
+information. See [handover and rollout order](answer-refusal-reason.md).
+This requires the compatible Gateway consumer from PR #33 before deployment;
+it does not change instruction detection or source freshness policy.

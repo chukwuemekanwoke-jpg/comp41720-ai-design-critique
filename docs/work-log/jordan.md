@@ -184,3 +184,82 @@
   responses against the OpenAPI schemas. Missing detected_at was rejected by
   both the schema and the API. Contract dependencies installed from the existing
   requirements-contracts.txt; dependency files and runtime code unchanged.
+
+## 2026-11-16 - Repeatable Answer development evaluation
+
+- Independent branch `feature/answer-evaluation`, based on main `04e5a41`.
+- Added 12 synthetic development cases, a local-model evaluation harness and
+  16 scorer/fixture tests. No runtime or prompt changes. These are not held-out
+  questions, official immigration facts or full-pipeline evaluation.
+- Harness preserves responses, per-trial checks, timings, model/runtime metadata,
+  dataset/prompt/source/harness hashes, commit and dirty-tree state.
+- Full automated suite: 345 passed, 5 optional checks skipped, existing warning.
+  This main-based branch does not include the separate resilience/metrics PRs.
+- Full baseline: 20 trials per case, 240 requests, 180 expected outcomes passed.
+  E08 and E10 followed planted instructions; E09 consistently returned evidence
+  fallback. Keep safety failure and reduced usefulness distinct.
+- Corrected a checker that initially mislabelled degraded evidence fallback as
+  refusal claims; the interrupted run is retained and excluded from totals.
+- Raw results and interpretation under docs/evaluation. Baseline command exits
+  nonzero because expectations failed; the report is complete and preserved.
+- Next: runtime injection mitigation and unseen attack variants; broader source
+  evidence and connected-system evaluation remain separate work.
+
+
+## 2026-11-16 - Explicit override refusal after baseline
+
+- Continued on `feature/answer-evaluation` after baseline commit `97700ad`.
+- Added instruction-guard-v1 for explicit override/role markers in questions
+  and passages, including representative Unicode and whitespace variants.
+- Refuses the full request before model generation or suspect evidence fallback
+  in either mode. Pending-update explanations retain priority. No public fields
+  added; policy label distinguishes this from generated output.
+- Original evidence text remains intact in input models. Updated one earlier
+  fallback-content test because returning detected attack text is intentionally
+  replaced by refusal. Twenty new guard checks pass.
+- Full suite: 365 passed, 5 skipped, existing warning. No resilience/metrics PR
+  code is included on this main-based branch.
+- Preserved baseline and expectations. Follow-up 240 requests: 200 original
+  expectations passed. E08/E09 still fail usefulness expectations, but all 60
+  original attack requests now return policy refusals instead of model answers.
+- Additional 25-request development run: role/Unicode variants refused by guard,
+  benign instructions answered; indirect evaluator pressure missed by guard but
+  refused by the model in five trials. Not held-out security evidence.
+- The short variants run overlapped part of the main repeat run. Results retain
+  this operator note; no comparative timing or throughput claims are made.
+- Added method, limits and result summaries. Team review required for refusal
+  policy; specific frontend explanations remain coordinated contract work.
+- Runtime changes and follow-up evidence remain uncommitted for Jordan's review.
+
+## 2026-11-17 - PR29 false-positive review
+
+- Read Emeka's changes-requested review. Confirmed the original guard was too
+  broad: ordinary forget/disregard sentences matched later rules/evidence nouns.
+- Narrowed model-instruction targets, versioned as instruction-guard-v2, and
+  added five realistic regression cases plus an answered API evidence case.
+- Focused guard/service tests: 61 passed, existing warning. Historical v1
+  baselines remain unchanged; narrowing coverage requires follow-up evaluation.
+- Real collected corpus not located in repo or shared Collector folder. Asked
+  Jordan for its location; no corpus-wide zero-false-positive claim made.
+- Prepared proposed refusal_reason=instruction_override handover notes. Not
+  emitted until Gateway compatibility is coordinated; no teammate code changed.
+- Runtime changes remain uncommitted. Review items 2 (corpus scan) and 3
+  (distinct reason) remain outstanding; PR is not ready to re-request approval.
+
+## 2026-11-18 - Distinct instruction-refusal reason
+
+- Separate `feature/answer-refusal-reason` branch from PR29 head `8acc303`;
+  left the existing PR branches and prepared worktrees unchanged.
+- Added optional instruction_override response reason, emitted only on guard
+  refusals. Ordinary responses omit it; required nulls remain. Validation rejects
+  reasons combined with pending updates, evidence, claims, fallback or non-refusal
+  status. Requests cannot set the response-only field.
+- Updated Answer OpenAPI and reused the exact shared-field definition already
+  present in Emeka's #33 to reduce schema drift. No Gateway/frontend service edits.
+- Nineteen new tests. Full suite 390 passed, 5 optional skips, existing warning;
+  all six contracts validate and diff check passes.
+- Temporary integration with actual #33 Gateway code (`95fbc02`) passed 108
+  targeted tests, including real in-process app handover with mocked model HTTP.
+- Documented consumer-before-producer rollout. Real-source scan, daily token
+  ceiling and frontend/metric reason breakdown remain separate follow-ups.
+- Changes uncommitted for Jordan's review.

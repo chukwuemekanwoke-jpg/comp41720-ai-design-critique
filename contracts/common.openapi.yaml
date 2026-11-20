@@ -106,6 +106,13 @@ components:
               maxItems: 10
               description: Unique source IDs; retain supplied versions and detection dates.
               items: {$ref: '#/components/schemas/AffectedSourceDetail'}
+        refusal_reason:
+          type: string
+          enum: [instruction_override]
+          description: >-
+            Optional. Present only on an insufficient_evidence refusal made by the
+            instruction guard (#29); omitted otherwise and never combined with abstention.
+            Agreed on #29; the Gateway accepts it before the Answer service sends it.
         stub: {type: boolean, description: Present only in the existing placeholder Gateway; frontend must label it.}
     Job:
       type: object
