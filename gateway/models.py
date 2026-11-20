@@ -132,6 +132,9 @@ class AnswerOut(ContractModel):
     model: ModelInfo
     notice: str = NOTICE
     abstention: AbstentionOut | None = None
+    # Set by Answer when its instruction guard refuses a request (#29). Optional so
+    # Answer can omit it; the Gateway's public response always shows it, as null.
+    refusal_reason: Literal["instruction_override"] | None = None
 
     @model_validator(mode="after")
     def coherent_status(self):
@@ -139,6 +142,9 @@ class AnswerOut(ContractModel):
             raise ValueError("Unexpected notice")
         if self.abstention is not None and self.status != "insufficient_evidence":
             raise ValueError("A pending-update abstention must be a refusal")
+        if self.refusal_reason is not None and (self.status != "insufficient_evidence"
+                                                or self.abstention is not None):
+            raise ValueError("A refusal reason belongs only on a non-pending refusal")
         if self.last_success_at is not None:
             timestamp(self.last_success_at)
         if self.status == "answered":

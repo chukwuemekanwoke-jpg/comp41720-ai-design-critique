@@ -295,3 +295,30 @@ def test_cors_allows_only_configured_origin_and_exposes_request_id():
 def test_invalid_configuration_fails_early(settings):
     with pytest.raises(ValueError):
         Settings(**settings)
+
+
+REFUSAL = dict(status="insufficient_evidence", answer=None, checklist=[], sources=[],
+               model=dict(name="policy-response", prompt_version="instruction-guard-v2"))
+
+
+def test_instruction_guard_refusal_reason_passes_through():
+    with mocked(answer_handler=lambda req: response(answer_result(**REFUSAL, refusal_reason="instruction_override"))) as client:
+        result = ask(client)
+    assert result.status_code == 200
+    assert result.json()["status"] == "insufficient_evidence"
+    assert result.json()["refusal_reason"] == "instruction_override"
+
+
+def test_normal_answer_exposes_null_refusal_reason():
+    with mocked() as client:
+        body = ask(client).json()
+    assert body["refusal_reason"] is None and body["status"] == "answered"
+
+
+@pytest.mark.parametrize("changes", [
+    {"refusal_reason": "instruction_override"},                       # on an answered response
+    {**REFUSAL, "refusal_reason": "something_else"},                  # unknown reason
+])
+def test_inconsistent_refusal_reason_is_rejected(changes):
+    with mocked(answer_handler=lambda req: response(answer_result(**changes))) as client:
+        assert ask(client).status_code == 502

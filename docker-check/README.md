@@ -24,6 +24,11 @@ Collector fixture → durable outbox → continuous relay → RabbitMQ local que
 continuous Indexer → persistent SQLite index → read-only Retrieval → Gateway →
 Answer → frontend.
 
+Retrieval also polls the Collector's source status (`COLLECTOR_BASE_URL`). A
+question whose evidence comes from a source with a detected but unindexed change
+abstains with the source and detection date (ADR-0003); stopping the `indexer`
+service after changing a fixture demonstrates it.
+
 Indexer and Retrieval share the `index` Docker volume. Only Indexer writes it;
 Retrieval mounts it read-only and opens SQLite with `mode=ro`. Every request
 resolves its generation and reads its passages in one transaction. Retained
@@ -62,11 +67,11 @@ the two missing connections; the new code adds both locally.
 From this checkout:
 
 ```powershell
-docker compose -f compose.check.yaml build tests
-docker compose -f compose.check.yaml up -d --no-build
-docker compose -f compose.check.yaml restart web
-docker compose -f compose.check.yaml run --rm tests
-docker compose -f compose.check.yaml run --rm product-check
+docker compose build tests
+docker compose up -d --no-build
+docker compose restart web
+docker compose run --rm tests
+docker compose run --rm product-check
 ```
 
 Restarting nginx refreshes service addresses after backend container recreation.
@@ -76,14 +81,25 @@ It publishes one malformed marker message and removes only that marker from the
 dead-letter queue. Any other dead letters, from the running pipeline or earlier
 runs, are requeued untouched so they stay available for inspection.
 
+`seed` only collects into an empty Collector store. Compose re-runs it whenever a
+dependent service starts (for example `docker compose start indexer`), and seeding
+again would reset a page changed during a demonstration, so later runs skip with
+"Collector store exists; skipping seed".
+
 To change the startup fixture, edit `docker-check/LOCAL_PIPELINE.html`, rebuild,
-and rerun the `seed` service. The continuous relay/indexer then publishes its
-changed content. `seed` is an explicit collection pass, not a source scheduler.
+and re-collect it explicitly:
+
+```powershell
+$env:SEED_FORCE = "1"; docker compose run --rm seed; Remove-Item Env:SEED_FORCE
+```
+
+The continuous relay/indexer then publishes its changed content. `seed` is an
+explicit collection pass, not a source scheduler.
 
 Stop without deleting Collector or index state:
 
 ```powershell
-docker compose -f compose.check.yaml down
+docker compose down
 ```
 
 Only nginx publishes a host port, on loopback 8088. RabbitMQ's fixed credentials
