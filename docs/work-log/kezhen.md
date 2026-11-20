@@ -2,7 +2,7 @@
 
 ## 2026-11-20 — Indexer finalisation
 
-### Completed locally with AI assistance
+### Completed with AI assistance
 
 - Based the documentation branch on main `0179403`.
 - Finalised [ADR-0002](../adr/0002-idempotent-processing-of-update-events.md):
@@ -29,7 +29,15 @@ Indexer/Gateway demonstration. Documentation changes pass `git diff --check`.
 
 PR #32 at `2656f3e97cf8118ee8727655616cf68d89865211` was separately inspected:
 its eight scoring tests passed, but a threshold candidate-boundary defect was
-reproduced. Review notes are prepared for Kezhen; no GitHub review was submitted.
+reproduced. Kezhen reported it to Emeka in WhatsApp; Emeka reproduced and fixed
+it in `1a47b96`, crediting Kezhen in the commit message.
+
+The follow-up review at `077f0318a565f2b38df3c5719393a99111b3dfe1` ran all ten
+scoring tests successfully and confirmed the original example now returns
+threshold 0.91 with 2/3 correct. A remaining precision issue was reproduced:
+`round(cut, 4)` can change the returned threshold without recomputing its
+reported counts. Kezhen reported that issue as well; review approval is pending
+its resolution.
 
 ### Saved demo evidence reviewed
 
@@ -40,10 +48,14 @@ reproduced. Review notes are prepared for Kezhen; no GitHub review was submitted
   `degraded` evidence-only fallback, not generated text. See the detailed
   [evidence review](../evaluation/adr0003-evidence-review.md). This is inspection
   of saved results, not an independent live rerun.
-- ADR-0003 still describes a 15-minute stuck-update metric and alert. Retrieval
-  currently has no corresponding alert/exporter implementation. Its owner should
-  clarify that as future work and distinguish it from the RabbitMQ quarantine
-  depth observable documented in ADR-0002.
+- Emeka confirmed the 15-minute stuck-update metric and alert are not
+  implemented. [PR #38](https://github.com/chukwuemekanwoke-jpg/comp41720-ai-design-critique/pull/38)
+  clarifies that they are future work, consistent with ADR-0002's metric-only
+  quarantine decision. The documentation diff was reviewed; its evidence link
+  depends on the files introduced by #37.
 - Q004 diagnostic outputs and prototype revision are needed to reproduce the
   reported ranks; the table-aware chunker remains proposed work.
-- These local document edits await Kezhen's review and repository submission.
+- The documentation was submitted in
+  [PR #37](https://github.com/chukwuemekanwoke-jpg/comp41720-ai-design-critique/pull/37),
+  approved by Emeka with all five CI checks successful, and merged into main as
+  `78fac19`. This work-log follow-up updates the earlier preparation status.
