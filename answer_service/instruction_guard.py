@@ -6,11 +6,11 @@ Only the text inspected here is normalised; original evidence remains untouched.
 import re
 import unicodedata
 
-GUARD_VERSION = 'instruction-guard-v2'
+GUARD_VERSION = 'instruction-guard-v3'
 PATTERNS = tuple(re.compile(pattern, re.IGNORECASE) for pattern in (
     # Require an adjacent model-instruction target. Ordinary rules/evidence
     # elsewhere in an immigration sentence are not an override request.
-    r'\b(?:ignore|disregard|forget|override|bypass)\s+(?:all\s+)?(?:(?:previous|above|prior|these|your|earlier)\s+)+(?:instructions?|prompts?)\b',
+    r'\b(?:ignore|disregard|forget|override|bypass)\s+(?:(?:all|any|the|my|of)\s+)*(?:(?:previous|above|prior|these|your|earlier)\s+)+(?:instructions?|prompts?)\b',
     r'\b(?:ignore|disregard|forget|override|bypass)\s+(?:the\s+)?(?:all\s+)?(?:system|developer|model|assistant)\s+(?:instructions?|prompts?|rules)\b',
     r'\b(?:ignore|disregard|forget|override|bypass)\s+all\s+(?:instructions?|prompts?)\b',
     r'\b(?:system|developer)\s+override\b',

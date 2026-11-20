@@ -60,3 +60,13 @@ snapshots and zero of 1,006 lines (185,793 bytes). No runtime change was needed.
 See evaluation/answer-guard-real-sources-2026-11-18.md and the paired JSON for
 method, exact identities and limitations. This resolves the missing saved-text
 scan evidence above, not final merged-main verification or answer evaluation.
+
+## Further review follow-up: determiner variants
+
+Applied Emeka's optional first-pattern refinement, versioned instruction-guard-v3.
+Five new instruction variants are detected; ordinary review regressions pass.
+Re-scanning all ten hash-verified saved sources yielded no flagged snapshots
+or lines. Full suite: 404 passed, 6 optional skips, existing warning.
+The guard document records the expanded false-positive trade-off and known
+role-play, developer-mode, indirect and non-English misses. Historical scan
+and synthetic results remain unchanged; the v3 JSON records its code hash.
