@@ -68,7 +68,9 @@ def best_threshold(grounded_scores, refusal_scores):
     for cut in candidates:
         correct = sum(s >= cut for s in grounded_scores) + sum(s < cut for s in refusal_scores)
         if best is None or correct >= best["correct"]:
-            best = {"threshold": round(cut, 4), "correct": correct,
+            # Unrounded: a rounded cut can fall on the wrong side of a close score
+            # and no longer reproduce the counts reported with it.
+            best = {"threshold": cut, "correct": correct,
                     "total": len(grounded_scores) + len(refusal_scores),
                     "answerable_below": sum(s < cut for s in grounded_scores),
                     "refusals_at_or_above": sum(s >= cut for s in refusal_scores)}

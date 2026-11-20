@@ -1,4 +1,6 @@
 """Scoring logic of scripts/evaluate_end_to_end.py; no network or running services."""
+import pytest
+
 from scripts.evaluate_end_to_end import best_threshold, case_checks, summarise
 
 GROUNDED_CASE = {"id": "A01", "category": "answerable", "acceptable_statuses": ["answered", "degraded"],
@@ -50,7 +52,7 @@ def test_pending_update_case_requires_the_abstention_reason():
 
 def test_threshold_separates_scores_and_reports_errors():
     best = best_threshold([0.8, 0.6, 0.3], [0.2, 0.1, 0.5])
-    assert best["threshold"] == 0.55
+    assert best["threshold"] == pytest.approx(0.55)
     assert best["correct"] == 5 and best["answerable_below"] == 1 and best["refusals_at_or_above"] == 0
     assert best_threshold([], [0.1]) is None
 
@@ -70,6 +72,21 @@ def test_threshold_separates_a_refusal_tied_with_the_lowest_answerable_score():
     assert best["correct"] == 3 and 0.5 < best["threshold"] <= 0.7
 
 
+@pytest.mark.parametrize("grounded, refusals", [
+    ([0.50002], [0.50001]),  # Kezhen's #32 review: rounding to 0.5 lost a correct case
+    ([0.8, 0.6, 0.3], [0.2, 0.1, 0.5]),
+    ([0.1], [0.9, 0.9]),
+    ([0.5, 0.7], [0.3, 0.5]),
+    ([0.123456789, 0.123456788], [0.123456787]),
+])
+def test_returned_threshold_reproduces_reported_counts(grounded, refusals):
+    best = best_threshold(grounded, refusals)
+    cut = best["threshold"]
+    assert sum(s >= cut for s in grounded) + sum(s < cut for s in refusals) == best["correct"]
+    assert sum(s < cut for s in grounded) == best["answerable_below"]
+    assert sum(s >= cut for s in refusals) == best["refusals_at_or_above"]
+
+
 def test_summary_counts_recall_and_changing_outcomes():
     dataset = {"cases": [GROUNDED_CASE, REFUSAL_CASE]}
     retrievals = {"A01": {"sources": ["S002"], "top_score": 0.4},
@@ -81,4 +98,4 @@ def test_summary_counts_recall_and_changing_outcomes():
     assert summary["retrieval_recall_at_5"] == {"cases": 1, "hits": 0, "misses": ["A01"]}
     assert summary["nondeterminism"]["cases_whose_status_changed"] == {"A01": {"answered": 1, "degraded": 1}}
     assert summary["by_category"]["out_of_collection"] == {"requests": 1, "passed": 1}
-    assert summary["threshold_suggestion"]["threshold"] == 0.2
+    assert summary["threshold_suggestion"]["threshold"] == pytest.approx(0.2)
