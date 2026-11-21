@@ -3,7 +3,7 @@
 - **Status:** Draft (proposed for the Week 10 ADR check)
 - **Service:** Retrieval API
 - **Owner:** Chukwuemeka Nwoke
-- **Date:** 2026-11-05 (revises the 2026-10-17 draft)
+- **Date:** 2026-11-05 (revises the 2026-10-17 draft; updated 2026-11-20)
 
 ## Context
 
@@ -45,9 +45,12 @@ Collector does not know a source (404), Retrieval answers with a general
 "freshness could not be confirmed" warning. A Collector outage must not stop
 the question path.
 
-**5. Stuck updates.** A change pending for more than 15 minutes is exported as a
-metric and raises an alert, because it usually means the event was
-dead-lettered. Abstention continues until it is indexed.
+**5. Stuck updates.** Abstention continues until the change is indexed, however
+long that takes. A change still pending after 15 minutes usually means its event
+was dead-lettered, so it should be exported as a metric with an alert. This is
+**not implemented**: today a stuck update shows only as continuing abstentions
+and as quarantine queue depth, the metric-only observable chosen in ADR-0002.
+The metric and alert are future work, alongside the Prometheus exporter.
 
 ## Alternatives rejected
 
@@ -62,16 +65,20 @@ dead-lettered. Abstention continues until it is indexed.
 
 ## Consequences
 
-- The Answer side of the handover is implemented (#20). The shared Answer and
-  Gateway contracts, the Gateway forwarding and the frontend display still need
-  the `abstention` field.
+- Implemented: Retrieval's status polling and cache, the Gateway handover and
+  the Answer refusal (#20, #21), with the shared contracts. The frontend shows
+  the refusal but has no specific display of the affected pages yet.
 - Each page edit makes that page's questions abstain until indexed. A cleaner
   change only creates a new version for pages whose cleaned text actually
   changes, but those pages all go pending at once; schedule cleaner changes away
   from demonstrations.
 - Demonstration: change a fixture, stop the Indexer, ask an affected question
   (abstains with the date) and an unaffected one (answers), restart the Indexer,
-  ask again (answers from the new generation).
+  ask again (answers from the new generation). Verified on 19 November against
+  the real snapshots: S003 abstained in 5/5 trials while v2 was pending, the S006
+  control kept its evidence in 5/5, and after restart `idx-11` served S003 v2
+  ([review](../evaluation/adr0003-evidence-review.md), from #37). These runs used
+  the evidence-only fallback, so they show update handling, not answer quality.
 
 ## What would change our mind
 
@@ -83,4 +90,5 @@ dead-lettered. Abstention continues until it is indexed.
 ## Open questions
 
 - A bulk status endpoint, so one poll returns every source consistently.
-- Final poll interval, cache limit and stuck-update threshold.
+- Final poll interval, cache limit and stuck-update threshold, and where the
+  stuck-update alert is raised.
