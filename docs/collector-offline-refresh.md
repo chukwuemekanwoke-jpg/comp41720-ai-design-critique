@@ -31,7 +31,7 @@ it does not claim to exercise a live RabbitMQ broker.
 With the existing Docker check images already built/pulled, reuse that setup:
 
 ```sh
-docker compose -f compose.check.yaml run --rm tests python -m scripts.demo_collector_refresh --rabbitmq
+docker compose run --rm tests python -m scripts.demo_collector_refresh --rabbitmq
 ```
 
 Or run the same Python module with `--rabbitmq` and set

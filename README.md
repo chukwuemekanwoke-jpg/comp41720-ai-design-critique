@@ -147,6 +147,25 @@ one that makes RAG, versioning and failure handling matter most.
 
 ---
 
+## Run it locally
+
+One command starts the whole system (Collector, RabbitMQ, Indexer, Retrieval,
+Answer, Gateway and the frontend) with synthetic data and no internet access:
+
+```sh
+docker compose up -d --build
+```
+
+Open <http://localhost:8088>, choose **Connection settings**, save
+`http://localhost:8088`, and ask a question. Answers are evidence-only by default,
+so no language model is needed. To use an Ollama model already installed on the
+machine, set `ANSWER_GENERATION_MODE=ollama` and `OLLAMA_MODEL` in a local `.env`.
+The Answer daily allowance is saved in a named Docker volume. Long evaluations
+need an explicitly increased `ANSWER_DAILY_TOKEN_LIMIT`; see
+[the allowance guide](docs/answer-daily-budget.md).
+Checks, the stale-answer demonstration and stopping the stack are described in
+[docker-check/README.md](docker-check/README.md).
+
 ## Architecture
 
 Branching, mandatory review, automated checks and the deployment boundary are

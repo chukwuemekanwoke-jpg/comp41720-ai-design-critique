@@ -357,3 +357,12 @@ public response shape and provenance. The complete branch suite passed with
 340 tests and 6 optional cases skipped, plus the existing TestClient warning.
 This is not a live model throughput or recovery benchmark. Earlier milestone
 observations below/above remain historical, not evidence of current deployment.
+
+## Daily generation allowance follow-up
+
+The separate daily-budget branch adds a persistent SQLite UTC-day admission
+allowance, default 1,000,000. Each model attempt charges context-plus-output
+allowance before HTTP; retries and failed calls remain charged. Exhaustion or
+unavailable storage returns the existing evidence-only fallback. Reported token
+counters remain separate from this conservative enforcement policy. See
+[configuration, demonstration and limits](answer-daily-budget.md).

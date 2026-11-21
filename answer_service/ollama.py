@@ -16,6 +16,7 @@ from pydantic import (
 )
 
 from answer_service.config import Settings
+from answer_service.budget import BudgetExhausted, BudgetUnavailable, DailyTokenBudget
 from answer_service.metrics import AnswerMetrics
 from answer_service.models import AnswerRequest, ContractModel
 
@@ -81,7 +82,10 @@ class GenerationResult:
 
 class OllamaAdapter:
     def __init__(self, settings: Settings, client: httpx.AsyncClient,
-                 metrics: AnswerMetrics | None = None):
+                 metrics: AnswerMetrics | None = None,
+                 budget: DailyTokenBudget | None = None):
+        self.budget = budget if budget is not None else DailyTokenBudget(
+            settings.daily_budget_db, settings.daily_token_limit)
         self.settings = settings
         self.client = client
         self._active_generations = 0
@@ -153,6 +157,19 @@ class OllamaAdapter:
     async def _post_with_retries(self, body: dict) -> httpx.Response:
         for attempt in range(self.settings.max_attempts):
             try:
+                # Charge independently of reported usage and before each retry.
+                # Threaded SQLite work shares the existing total deadline. If
+                # cancelled while charging, an unused charge may remain (safe).
+                allowance = self.settings.context_tokens + self.settings.max_output_tokens
+                try:
+                    await asyncio.to_thread(self.budget.charge, allowance)
+                except BudgetExhausted:
+                    self.metrics.budget_rejections.labels(reason="exhausted").inc()
+                    raise GenerationFailure("daily model allowance exhausted") from None
+                except BudgetUnavailable:
+                    self.metrics.budget_rejections.labels(reason="unavailable").inc()
+                    raise GenerationFailure("daily model ledger unavailable") from None
+                self.metrics.budget_charged.inc(allowance)
                 response = await self._observed_post(body)
                 response.raise_for_status()
                 return response
