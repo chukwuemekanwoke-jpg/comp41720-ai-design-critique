@@ -1,0 +1,60 @@
+{
+  "date": "2026-11-18",
+  "scope": "Isolated combined PR snapshot, synthetic evidence, actual local llama3.2:3b. Not final merged-main verification.",
+  "revisions": {
+    "origin/main": "60cdcfe80f890bff454a0d2d32d32c65109ffaff",
+    "origin/feature/answer-resilience": "fb2af7ece68f10d4920da38d3563c4452ecccff5",
+    "origin/feature/answer-metrics": "f042fe48f320c1a62014f521f2ec7362e6167192",
+    "origin/feature/answer-evaluation": "8acc3037f5c44ec30b922f7765b6d56c881e7285",
+    "origin/feature/answer-refusal-reason": "e543ded072c7e1851d026a83f781cc45eb227928",
+    "origin/feature/answer-daily-budget": "764d83345dd63fe308660db8f08cfa694d8c7bea",
+    "origin/feature/refusal-reason-and-docker": "95fbc02d0577cbc79f10374ee8776c9990177a2c"
+  },
+  "daily_allowance": 16896,
+  "charge_per_attempt": 8448,
+  "browser_queries": [
+    {
+      "question": "formprobe colour?",
+      "visible_result": "blue"
+    },
+    {
+      "question": "feeprobe amount?",
+      "visible_result": "ten euro"
+    },
+    {
+      "question": "formprobe colour?",
+      "visible_result": "An answer could not be generated. Review the retrieved evidence below."
+    },
+    {
+      "question": "feeprobe amount?",
+      "after_container_replacement": true,
+      "visible_result": "An answer could not be generated. Review the retrieved evidence below."
+    }
+  ],
+  "container_before": "ce44bac57e35703e503a751a230cc9f0d55351b9327ae36a153dc15abac17fd8",
+  "container_after": "714ae7dbc66650e3da8bbe701cc7a6678f131806b76a223afe24537a80bdf379",
+  "before_replacement": {
+    "ledger": [
+      [
+        "2026-11-18",
+        16896
+      ]
+    ],
+    "metrics": "# HELP studentpath_answer_requests_total Answer HTTP requests.\n# TYPE studentpath_answer_requests_total counter\nstudentpath_answer_requests_total{status_class=\"2xx\"} 3.0\n# HELP studentpath_answer_requests_created Answer HTTP requests.\n# TYPE studentpath_answer_requests_created gauge\nstudentpath_answer_requests_created{status_class=\"2xx\"} 1.7950015850483904e+09\n# HELP studentpath_answer_request_duration_seconds Answer HTTP latency, including model waiting.\n# TYPE studentpath_answer_request_duration_seconds histogram\nstudentpath_answer_request_duration_seconds_bucket{le=\"0.01\"} 1.0\nstudentpath_answer_request_duration_seconds_bucket{le=\"0.05\"} 1.0\nstudentpath_answer_request_duration_seconds_bucket{le=\"0.1\"} 1.0\nstudentpath_answer_request_duration_seconds_bucket{le=\"0.25\"} 1.0\nstudentpath_answer_request_duration_seconds_bucket{le=\"0.5\"} 1.0\nstudentpath_answer_request_duration_seconds_bucket{le=\"1.0\"} 2.0\nstudentpath_answer_request_duration_seconds_bucket{le=\"2.0\"} 2.0\nstudentpath_answer_request_duration_seconds_bucket{le=\"5.0\"} 3.0\nstudentpath_answer_request_duration_seconds_bucket{le=\"10.0\"} 3.0\nstudentpath_answer_request_duration_seconds_bucket{le=\"20.0\"} 3.0\nstudentpath_answer_request_duration_seconds_bucket{le=\"30.0\"} 3.0\nstudentpath_answer_request_duration_seconds_bucket{le=\"+Inf\"} 3.0\nstudentpath_answer_request_duration_seconds_count 3.0\nstudentpath_answer_request_duration_seconds_sum 4.449925292999978\n# HELP studentpath_answer_request_duration_seconds_created Answer HTTP latency, including model waiting.\n# TYPE studentpath_answer_request_duration_seconds_created gauge\nstudentpath_answer_request_duration_seconds_created 1.7950013864963295e+09\n# HELP studentpath_answer_responses_total Validated answer outcomes.\n# TYPE studentpath_answer_responses_total counter\nstudentpath_answer_responses_total{status=\"answered\"} 2.0\nstudentpath_answer_responses_total{status=\"degraded\"} 1.0\n# HELP studentpath_answer_responses_created Validated answer outcomes.\n# TYPE studentpath_answer_responses_created gauge\nstudentpath_answer_responses_created{status=\"answered\"} 1.795001585046793e+09\nstudentpath_answer_responses_created{status=\"degraded\"} 1.795001604148156e+09\n# HELP studentpath_answer_model_attempts_total Ollama HTTP attempts.\n# TYPE studentpath_answer_model_attempts_total counter\nstudentpath_answer_model_attempts_total{result=\"http_2xx\"} 2.0\n# HELP studentpath_answer_model_attempts_created Ollama HTTP attempts.\n# TYPE studentpath_answer_model_attempts_created gauge\nstudentpath_answer_model_attempts_created{result=\"http_2xx\"} 1.795001585045547e+09\n# HELP studentpath_answer_model_retries_total Retries scheduled within the deadline.\n# TYPE studentpath_answer_model_retries_total counter\nstudentpath_answer_model_retries_total 0.0\n# HELP studentpath_answer_model_retries_created Retries scheduled within the deadline.\n# TYPE studentpath_answer_model_retries_created gauge\nstudentpath_answer_model_retries_created 1.795001386496391e+09\n# HELP studentpath_answer_model_active Admitted model requests, including backoff.\n# TYPE studentpath_answer_model_active gauge\nstudentpath_answer_model_active 0.0\n# HELP studentpath_answer_model_rejected_total Requests rejected by the bulkhead.\n# TYPE studentpath_answer_model_rejected_total counter\nstudentpath_answer_model_rejected_total 0.0\n# HELP studentpath_answer_model_rejected_created Requests rejected by the bulkhead.\n# TYPE studentpath_answer_model_rejected_created gauge\nstudentpath_answer_model_rejected_created 1.7950013864964206e+09\n# HELP studentpath_answer_budget_rejections_total Model attempts denied by the daily ledger.\n# TYPE studentpath_answer_budget_rejections_total counter\nstudentpath_answer_budget_rejections_total{reason=\"exhausted\"} 1.0\n# HELP studentpath_answer_budget_rejections_created Model attempts denied by the daily ledger.\n# TYPE studentpath_answer_budget_rejections_created gauge\nstudentpath_answer_budget_rejections_created{reason=\"exhausted\"} 1.7950016041480188e+09\n# HELP studentpath_answer_budget_charged_tokens_total Conservative attempt allowances charged in this process.\n# TYPE studentpath_answer_budget_charged_tokens_total counter\nstudentpath_answer_budget_charged_tokens_total 16896.0\n# HELP studentpath_answer_budget_charged_tokens_created Conservative attempt allowances charged in this process.\n# TYPE studentpath_answer_budget_charged_tokens_created gauge\nstudentpath_answer_budget_charged_tokens_created 1.7950013864964352e+09\n# HELP studentpath_answer_model_tokens_total Tokens reported by Ollama; not a budget.\n# TYPE studentpath_answer_model_tokens_total counter\nstudentpath_answer_model_tokens_total{kind=\"input\"} 753.0\nstudentpath_answer_model_tokens_total{kind=\"output\"} 51.0\n# HELP studentpath_answer_model_tokens_created Tokens reported by Ollama; not a budget.\n# TYPE studentpath_answer_model_tokens_created gauge\nstudentpath_answer_model_tokens_created{kind=\"input\"} 1.7950015850458605e+09\nstudentpath_answer_model_tokens_created{kind=\"output\"} 1.7950015850458894e+09\n# HELP studentpath_answer_model_usage_missing_total Successful HTTP responses without a valid token count.\n# TYPE studentpath_answer_model_usage_missing_total counter\n"
+  },
+  "after_replacement": {
+    "ledger": [
+      [
+        "2026-11-18",
+        16896
+      ]
+    ],
+    "metrics": "# HELP studentpath_answer_requests_total Answer HTTP requests.\n# TYPE studentpath_answer_requests_total counter\nstudentpath_answer_requests_total{status_class=\"2xx\"} 1.0\n# HELP studentpath_answer_requests_created Answer HTTP requests.\n# TYPE studentpath_answer_requests_created gauge\nstudentpath_answer_requests_created{status_class=\"2xx\"} 1.795001630503197e+09\n# HELP studentpath_answer_request_duration_seconds Answer HTTP latency, including model waiting.\n# TYPE studentpath_answer_request_duration_seconds histogram\nstudentpath_answer_request_duration_seconds_bucket{le=\"0.01\"} 1.0\nstudentpath_answer_request_duration_seconds_bucket{le=\"0.05\"} 1.0\nstudentpath_answer_request_duration_seconds_bucket{le=\"0.1\"} 1.0\nstudentpath_answer_request_duration_seconds_bucket{le=\"0.25\"} 1.0\nstudentpath_answer_request_duration_seconds_bucket{le=\"0.5\"} 1.0\nstudentpath_answer_request_duration_seconds_bucket{le=\"1.0\"} 1.0\nstudentpath_answer_request_duration_seconds_bucket{le=\"2.0\"} 1.0\nstudentpath_answer_request_duration_seconds_bucket{le=\"5.0\"} 1.0\nstudentpath_answer_request_duration_seconds_bucket{le=\"10.0\"} 1.0\nstudentpath_answer_request_duration_seconds_bucket{le=\"20.0\"} 1.0\nstudentpath_answer_request_duration_seconds_bucket{le=\"30.0\"} 1.0\nstudentpath_answer_request_duration_seconds_bucket{le=\"+Inf\"} 1.0\nstudentpath_answer_request_duration_seconds_count 1.0\nstudentpath_answer_request_duration_seconds_sum 0.006142750000037722\n# HELP studentpath_answer_request_duration_seconds_created Answer HTTP latency, including model waiting.\n# TYPE studentpath_answer_request_duration_seconds_created gauge\nstudentpath_answer_request_duration_seconds_created 1.7950016271187963e+09\n# HELP studentpath_answer_responses_total Validated answer outcomes.\n# TYPE studentpath_answer_responses_total counter\nstudentpath_answer_responses_total{status=\"degraded\"} 1.0\n# HELP studentpath_answer_responses_created Validated answer outcomes.\n# TYPE studentpath_answer_responses_created gauge\nstudentpath_answer_responses_created{status=\"degraded\"} 1.7950016305029929e+09\n# HELP studentpath_answer_model_attempts_total Ollama HTTP attempts.\n# TYPE studentpath_answer_model_attempts_total counter\n# HELP studentpath_answer_model_retries_total Retries scheduled within the deadline.\n# TYPE studentpath_answer_model_retries_total counter\nstudentpath_answer_model_retries_total 0.0\n# HELP studentpath_answer_model_retries_created Retries scheduled within the deadline.\n# TYPE studentpath_answer_model_retries_created gauge\nstudentpath_answer_model_retries_created 1.7950016271188273e+09\n# HELP studentpath_answer_model_active Admitted model requests, including backoff.\n# TYPE studentpath_answer_model_active gauge\nstudentpath_answer_model_active 0.0\n# HELP studentpath_answer_model_rejected_total Requests rejected by the bulkhead.\n# TYPE studentpath_answer_model_rejected_total counter\nstudentpath_answer_model_rejected_total 0.0\n# HELP studentpath_answer_model_rejected_created Requests rejected by the bulkhead.\n# TYPE studentpath_answer_model_rejected_created gauge\nstudentpath_answer_model_rejected_created 1.7950016271188412e+09\n# HELP studentpath_answer_budget_rejections_total Model attempts denied by the daily ledger.\n# TYPE studentpath_answer_budget_rejections_total counter\nstudentpath_answer_budget_rejections_total{reason=\"exhausted\"} 1.0\n# HELP studentpath_answer_budget_rejections_created Model attempts denied by the daily ledger.\n# TYPE studentpath_answer_budget_rejections_created gauge\nstudentpath_answer_budget_rejections_created{reason=\"exhausted\"} 1.7950016305028205e+09\n# HELP studentpath_answer_budget_charged_tokens_total Conservative attempt allowances charged in this process.\n# TYPE studentpath_answer_budget_charged_tokens_total counter\nstudentpath_answer_budget_charged_tokens_total 0.0\n# HELP studentpath_answer_budget_charged_tokens_created Conservative attempt allowances charged in this process.\n# TYPE studentpath_answer_budget_charged_tokens_created gauge\nstudentpath_answer_budget_charged_tokens_created 1.7950016271188486e+09\n# HELP studentpath_answer_model_tokens_total Tokens reported by Ollama; not a budget.\n# TYPE studentpath_answer_model_tokens_total counter\n# HELP studentpath_answer_model_usage_missing_total Successful HTTP responses without a valid token count.\n# TYPE studentpath_answer_model_usage_missing_total counter\n"
+  },
+  "limits": [
+    "Synthetic retrieval fixtures, not real-source answer-quality evaluation.",
+    "Conservative reservation allowance, not measured token billing.",
+    "Website uses existing generic degraded message; no dedicated daily-budget display.",
+    "Temporary assembly combines unmerged branches; final main verification remains required."
+  ]
+}

@@ -5,6 +5,8 @@ from dataclasses import dataclass
 from math import isfinite
 from urllib.parse import urlsplit
 
+from answer_service.budget import DEFAULT_BUDGET_DB
+
 
 @dataclass(frozen=True)
 class Settings:
@@ -19,6 +21,8 @@ class Settings:
     max_output_tokens: int = 256
     context_tokens: int = 8192
     max_input_characters: int = 8000
+    daily_token_limit: int = 1_000_000
+    daily_budget_db: str = DEFAULT_BUDGET_DB
 
     def __post_init__(self):
         if self.generation_mode not in {"evidence_only", "ollama"}:
@@ -59,6 +63,12 @@ class Settings:
             raise ValueError("OLLAMA_CONTEXT_TOKENS must be between 2048 and 32768")
         if self.max_output_tokens >= self.context_tokens:
             raise ValueError("output token cap must be smaller than context size")
+        if type(self.daily_token_limit) is not int or not 1 <= self.daily_token_limit <= 1_000_000_000:
+            raise ValueError("ANSWER_DAILY_TOKEN_LIMIT must be an integer between 1 and 1000000000")
+        if not isinstance(self.daily_budget_db, str) or not self.daily_budget_db.strip():
+            raise ValueError("ANSWER_DAILY_BUDGET_DB must be a nonblank file path")
+        if self.daily_budget_db == ":memory:":
+            raise ValueError("Daily budget requires a persistent file")
         if not 1 <= self.max_input_characters <= 40000:
             raise ValueError("ANSWER_MAX_INPUT_CHARACTERS must be between 1 and 40000")
 
@@ -76,4 +86,6 @@ class Settings:
             max_output_tokens=int(os.getenv("OLLAMA_MAX_OUTPUT_TOKENS", "256")),
             context_tokens=int(os.getenv("OLLAMA_CONTEXT_TOKENS", "8192")),
             max_input_characters=int(os.getenv("ANSWER_MAX_INPUT_CHARACTERS", "8000")),
+            daily_token_limit=int(os.getenv("ANSWER_DAILY_TOKEN_LIMIT", "1000000")),
+            daily_budget_db=os.getenv("ANSWER_DAILY_BUDGET_DB", DEFAULT_BUDGET_DB),
         )

@@ -239,3 +239,50 @@
   and 27 output tokens reported by Ollama, with active generation back at zero.
   This is a smoke check, not throughput or full token-budget evaluation.
 - Changes remain uncommitted for Jordan's review.
+
+## 2026-11-18 - Persistent daily model allowance
+
+- Separate `feature/answer-daily-budget`, based on metrics PR28 (`f042fe4`),
+  leaving approved PRs and the refusal-label branch unchanged.
+- Added SQLite admission ledger by UTC date, atomic check/increment across
+  processes, conservative context-plus-output charging before each attempt,
+  and no refunds for retries, failure, unknown usage or cancellation.
+- Exhaustion/unavailable ledger uses existing evidence-only fallback. Default
+  allowance 1,000,000 (118 default attempts), configurable path and limit.
+- Added charged/denied metrics and a Compose persistence overlay; no shared
+  service implementations or public response fields changed.
+- Tests isolate the default ledger with a fixture; explicit-path tests exercise
+  actual persistence, process concurrency, app restart and UTC rollover.
+- New tests: 21 passed. Full suite: 378 passed, 6 optional skips, existing warning.
+- Real local Ollama: first request answered, next request fell back, restarted app
+  still denied generation. Completed evidence and runnable opt-in demo saved.
+- Corrected a smoke-check assertion that matched Prometheus HELP text rather
+  than actual counter samples; this did not require a runtime change.
+- Old check-stack plus budget overlay validates. Docker recreation and final
+  combined main verification still required; no exact physical GPU-token or
+  distributed multi-host quota claim. Evaluation allowance needs explicit setup.
+- Implementation and evidence uncommitted for Jordan's review.
+
+### 18 November: daily allowance through Docker and the website
+
+- Tested an isolated combination of current budget, refusal-label and Gateway
+  Docker branches with synthetic indexed sources and actual local Ollama.
+- Two browser questions answered; the next used the existing evidence fallback.
+- Replaced Answer container only, retaining its named volume. A further browser
+  question still fell back; persisted charge stayed 16,896 and new process made
+  zero model attempts. Saved metrics, exact revisions and website screenshot.
+- Documentation/evidence follow-up only. Final merged-main verification and
+  real-source evaluation remain pending. These follow-up files are uncommitted.
+
+## PR35 review follow-up: default Docker persistence
+
+- Integrated reviewed PR33 into the budget branch as a dependency, without
+  merging either PR into main. Default Compose now mounts the Answer budget
+  volume and sets its path/allowance; the old overlay stays compatible.
+- Kept the 1,000,000 normal default; documented an explicit 25,000,000 example
+  for 880-request evaluations, retry accounting, prior usage and denial metrics.
+- Full local suite: 382 passed, 6 optional skips, existing warning. Six contracts
+  validate; normal Compose and compatibility overlay configurations validate.
+- Earlier live Docker/browser replacement evidence remains applicable to the
+  mounted-ledger mechanism; this configuration follow-up has not had a new live
+  Docker recreation run. Final combined main verification remains outstanding.
