@@ -16,6 +16,7 @@ from pydantic import (
 )
 
 from answer_service.config import Settings
+from answer_service.metrics import AnswerMetrics
 from answer_service.models import AnswerRequest, ContractModel
 
 PROMPT_VERSION = "studentpath-answer-v1"
@@ -79,9 +80,12 @@ class GenerationResult:
 
 
 class OllamaAdapter:
-    def __init__(self, settings: Settings, client: httpx.AsyncClient):
+    def __init__(self, settings: Settings, client: httpx.AsyncClient,
+                 metrics: AnswerMetrics | None = None):
         self.settings = settings
         self.client = client
+        self._active_generations = 0
+        self.metrics = metrics if metrics is not None else AnswerMetrics()
 
     async def generate(self, request: AnswerRequest) -> GenerationResult:
         evidence = [
@@ -111,12 +115,25 @@ class OllamaAdapter:
                 "num_ctx": self.settings.context_tokens,
             },
         }
+        # Per-process bulkhead. This adapter is used on one application's event
+        # loop; admission and increment have no await between them. Do not queue
+        # requests behind a slow model or retry requests rejected by this limit.
+        if self._active_generations >= self.settings.max_concurrent_generations:
+            self.metrics.rejected.inc()
+            raise GenerationFailure("model generation capacity reached")
+        self._active_generations += 1
+        self.metrics.active.inc()
         try:
-            # This is a total client-side deadline, not just a socket idle timeout.
+            # All attempts, exponential backoff and parsing share one deadline.
             async with asyncio.timeout(self.settings.timeout_seconds):
-                response = await self.client.post("/api/chat", json=body)
-                response.raise_for_status()
-                envelope = ChatEnvelope.model_validate(response.json())
+                response = await self._post_with_retries(body)
+                try:
+                    raw = response.json()
+                except ValueError:
+                    self.metrics.observe_usage(None)
+                    raise
+                self.metrics.observe_usage(raw)
+                envelope = ChatEnvelope.model_validate(raw)
                 if not envelope.done or envelope.done_reason != "stop":
                     raise GenerationFailure("incomplete or truncated model response")
                 output = GeneratedAnswer.model_validate_json(envelope.message.content)
@@ -129,3 +146,39 @@ class OllamaAdapter:
             raise GenerationFailure(
                 "Ollama call or response validation failed"
             ) from exc
+        finally:
+            self._active_generations -= 1
+            self.metrics.active.dec()
+
+    async def _post_with_retries(self, body: dict) -> httpx.Response:
+        for attempt in range(self.settings.max_attempts):
+            try:
+                response = await self._observed_post(body)
+                response.raise_for_status()
+                return response
+            except httpx.HTTPStatusError as exc:
+                # Retry only transient server failures. A rate-limit/overload
+                # response (429), invalid request or missing model is terminal.
+                if exc.response.status_code not in {500, 502, 503, 504}:
+                    raise
+            except (httpx.ConnectError, httpx.ConnectTimeout):
+                pass
+            # Read/write timeouts are not retried: generation may still be
+            # running upstream. Invalid output and valid refusals are also final.
+            if attempt + 1 == self.settings.max_attempts:
+                raise GenerationFailure("transient model failure exhausted retries")
+            self.metrics.retries.inc()
+            await asyncio.sleep(self.settings.retry_backoff_seconds * (2 ** attempt))
+        raise GenerationFailure("no generation attempt configured")
+
+    async def _observed_post(self, body: dict) -> httpx.Response:
+        result = "transport_error"
+        try:
+            response = await self.client.post("/api/chat", json=body)
+            result = f"http_{response.status_code // 100}xx"
+            return response
+        except asyncio.CancelledError:
+            result = "cancelled"
+            raise
+        finally:
+            self.metrics.attempts.labels(result=result).inc()
