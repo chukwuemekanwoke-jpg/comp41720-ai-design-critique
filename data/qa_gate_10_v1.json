@@ -112,14 +112,14 @@
       "question_id": "Q009",
       "source_id": "S009",
       "question": "For a non-visa-required student on a course leading to a stay longer than eight months, how much access to funds does ISD require?",
-      "expected_answer": "€10,000 accessible funds, in addition to applicable course-fee requirements.",
+      "expected_answer": "Direct access to €10,000.",
       "evidence_paraphrase": "Non-visa-required students: direct access to €10,000 for more than eight months.",
       "evidence_section": "Financial Requirements",
       "source_url": "https://www.irishimmigration.ie/coming-to-study-in-ireland/what-are-my-study-options/a-fee-paying-private-primary-or-secondary-school/information-on-student-finances/",
       "as_of_date": "2026-10-23",
-      "evidence_status": "identified_in_indexed_excerpt",
+      "evidence_status": "confirmed_in_collector_snapshot",
       "end_to_end_rag_status": "not_run",
-      "notes": "Amounts can change; keep source-specific freshness tracking and avoid mixing visa-stage and registration-stage requirements."
+      "notes": "Collector evidence checked on 2026-11-16. The course-fee clause was removed because the cited clause applies to the visa-required section. Evaluation owner Emeka confirmed removal on 2026-11-19: the course-fee clause applies to visa-required nationals, not the non-visa-required cohort in Q009."
     },
     {
       "question_id": "Q010",
