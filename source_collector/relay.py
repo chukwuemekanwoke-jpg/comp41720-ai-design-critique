@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+from pathlib import Path
 import sqlite3
 import time
 from dataclasses import dataclass
@@ -71,39 +72,52 @@ class RabbitPublisher:
 class OutboxRelay:
     def __init__(self, db_path, publisher, *, lock_timeout=10):
         # Require an existing collector database: never silently create the wrong DB.
-        from pathlib import Path
+        path = Path(db_path).resolve()
         self.db = sqlite3.connect(
-            Path(db_path).resolve().as_uri() + "?mode=rw", uri=True,
+            path.as_uri() + "?mode=rw", uri=True,
             timeout=lock_timeout,
         )
+        try:
+            # Use SQLite's cross-process locking on a separate, empty database.
+            # No Collector writer or HTTP reader touches this lock file.
+            self.relay_lock = sqlite3.connect(str(path) + ".relay-lock.sqlite3", timeout=lock_timeout)
+        except Exception:
+            self.db.close()
+            raise
         self.db.row_factory = sqlite3.Row
         self.publisher = publisher
 
     def close(self):
-        self.db.close()
+        try:
+            self.relay_lock.close()
+        finally:
+            self.db.close()
 
     def run_once(self, limit=100):
         if limit <= 0:
             raise ValueError("limit must be positive")
         published = 0
         for _ in range(limit):
-            with self.db:
-                # Hold the write reservation until confirmation and status commit.
-                # A crash releases it and rolls back; another relay may then retry.
-                self.db.execute("BEGIN IMMEDIATE")
+            with self.relay_lock:
+                # Keep competing relays out until confirmation and status commit,
+                # without holding a Collector DB transaction during broker I/O.
+                self.relay_lock.execute("BEGIN IMMEDIATE")
                 row = self.db.execute("""SELECT event_id,payload_json FROM outbox
                     WHERE status='pending' ORDER BY created_at,source_id,source_version
                     LIMIT 1""").fetchone()
                 if row is None:
                     break
-                self.db.execute("UPDATE outbox SET attempts=attempts+1 WHERE event_id=?", (row["event_id"],))
                 try:
                     self.publisher.publish(row["payload_json"], row["event_id"])
                 except Exception as exc:
+                    with self.db:
+                        self.db.execute("UPDATE outbox SET attempts=attempts+1 WHERE event_id=?",
+                                        (row["event_id"],))
                     # Do not log exception text: broker errors may contain credentials.
                     return {"published": published, "failed": 1, "error_type": type(exc).__name__}
-                self.db.execute("""UPDATE outbox SET status='published',published_at=?
-                    WHERE event_id=?""", (utc_now(), row["event_id"]))
+                with self.db:
+                    self.db.execute("""UPDATE outbox SET status='published',published_at=?,
+                        attempts=attempts+1 WHERE event_id=?""", (utc_now(), row["event_id"]))
             published += 1
         return {"published": published, "failed": 0}
 
